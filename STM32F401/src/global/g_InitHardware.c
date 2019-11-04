@@ -1,8 +1,7 @@
-/*-----------------------------------
-InitHardware
-
-ÃÓ‰ÛÎ¸ ÍÓÌÙË„Û‡ˆËË Ó·ÓÛ‰Ó‚‡ÌËˇ
--------------------------------------*/
+// -----------------------------------
+// InitHardware
+// –ú–æ–¥—É–ª—å –∫–æ–Ω—Ñ–∏–≥—É—Ä–∞—Ü–∏–∏ –æ–±–æ—Ä—É–¥–æ–≤–∞–Ω–∏—è
+// -----------------------------------
 #include "global/g_hardware.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_rcc.h"
@@ -15,510 +14,479 @@ void InitSpi(void);
 void InitUart(void);
 void InitAdc(void);
 
-void InitDma (void);    //‰Îˇ ÔÂÂ‰‡˜Ë Ò ADC ÔÓÚÓÏÛ ˜ÚÓ ‰‡ÌÌ˚Â ÔË¯ÛÚÒˇ
-                        //‚ 1 Â„ËÒÚ Ë ÔÂÂÚË‡˛Ú ‰Û„ ‰Û„‡
-                        //(ÏÓÊÌÓ injected channel, ÌÓ Ëı ‚ÒÂ„Ó 4, ‡ Í‡Ì‡ÎÓ‚ 6)
+// –¥–ª—è –ø–µ—Ä–µ–¥–∞—á–∏ —Å ADC –ø–æ—Ç–æ–º—É —á—Ç–æ –¥–∞–Ω–Ω—ã–µ –ø–∏—à—É—Ç—Å—è
+// –≤ 1 —Ä–µ–≥–∏—Å—Ç—Ä –∏ –ø–µ—Ä–µ—Ç–∏—Ä–∞—é—Ç –¥—Ä—É–≥ –¥—Ä—É–≥–∞
+// (–º–æ–∂–Ω–æ injected channel, –Ω–æ –∏—Ö –≤—Å–µ–≥–æ 4, –∞ –∫–∞–Ω–∞–ª–æ–≤ 6)
+void InitDma(void); 
 
 __IO uint16_t ADC1ConvertedValue = 0;
 
 void InitHardware(void)
 {
-  InitClock();
-  InitTimer();
-  
-  InitGpio();
-  InitUart();
-  InitDma();
-  InitAdc();
-  
-  InitSpi();
+    InitClock();
+    InitTimer();
+
+    InitGpio();
+    InitUart();
+    InitDma();
+    InitAdc();
+
+    InitSpi();
 }
 
-
-
-//Ì‡ÒÚÓÈÍ‡ ¯ËÌ Ú‡ÍÚËÓ‚‡ÌËˇ (‚Ò∏ ÔÓ ÒıÂÏÂ, ¯ËÌ˚ Ì‡ Ï‡ÍÒËÏ‡Î¸ÌÓÈ ˜‡ÒÚÓÚÂ)
+//–Ω–∞—Å—Ç—Ä–æ–π–∫–∞ —à–∏–Ω —Ç–∞–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏—è (–≤—Å—ë –ø–æ —Å—Ö–µ–º–µ, —à–∏–Ω—ã –Ω–∞ –º–∞–∫—Å–∏–º–∞–ª—å–Ω–æ–π —á–∞—Å—Ç–æ—Ç–µ)
 void InitClock(void)
 {
-  RCC_PLLCmd(DISABLE);  //‚˚ÍÎ˛˜‡ÂÚ PLL, ÒÓ ‚ÍÎ˛˜ÂÌÌ˚È ÌÂÎ¸Áˇ Ì‡ÒÚ‡Ë‚‡Ú¸
-  
-  do
-  {
-    RCC_HSEConfig(RCC_HSE_ON); //‚ÍÎ˛˜‡˛ ‚ÌÂ¯ÌËÈ ËÒÚÓ˜ÌËÍ
-  }
-  while (!RCC_WaitForHSEStartUp());     //ÓÊË‰‡ÌËÂ ‚ÍÎ˛˜ÂÌËˇ
-    
-  RCC_PLLConfig(RCC_PLLSource_HSE,      //‚ÌÂ¯ÌËÈ „ÂÌÂ‡ÚÓ
-                8,                      //‰ÂÎËÚÂÎ¸ M PLL (‚ÒÂ ˝ÚË ÍÓÌÚ‡ÌÚ˚ Ì‡ ÒıÂÏÂ PLL)
-                84,                     //ÏÌÓÊËÚÂÎ¸ N PLL  = 16*84/(8*2)=84 Ã√ˆ
-                2,                      //‰ÂÎËÚÂÎ¸ P ‰Îˇ „Î‡‚Ì˚ı SYSCLK (2,4,6,8)
-                4);                     //(ÌÂ ËÒÔÓÎ¸ÁÛÂÚÒˇ) ‰ÂÎËÚÂÎ¸ Q ‰Îˇ USB, OTG FS, SDIO, RNG clocks (4-15)
-  
-  do
-  {
-    RCC_PLLCmd(ENABLE);
-  }
-  while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY)!=SET);
+    RCC_PLLCmd(DISABLE); //–≤—ã–∫–ª—é—á–∞–µ—Ç PLL, —Å–æ –≤–∫–ª—é—á–µ–Ω–Ω—ã–π –Ω–µ–ª—å–∑—è –Ω–∞—Å—Ç—Ä–∞–∏–≤–∞—Ç—å
 
-//  RCC_HSICmd(DISABLE);  //‚˚ÍÎ˛˜‡˛ ‚ÌÛÚÂÌÌËÈ „ÂÌÂ‡ÚÓ
+    do
+    {
+        RCC_HSEConfig(RCC_HSE_ON);      //–≤–∫–ª—é—á–∞—é –≤–Ω–µ—à–Ω–∏–π –∏—Å—Ç–æ—á–Ω–∏–∫
+    } while (!RCC_WaitForHSEStartUp()); //–æ–∂–∏–¥–∞–Ω–∏–µ –≤–∫–ª—é—á–µ–Ω–∏—è
 
-  RCC_HCLKConfig(RCC_SYSCLK_Div1);//‰ÂÎËÚÂÎ¸ ÔÂÂ‰ ¯ËÌ‡ÏË
-  RCC_PCLK1Config(RCC_HCLK_Div2);//‰ÂÎËÚÂÎ¸ ÔÂÂ‰ ÔÂÂÙÂËÈÌÓÈ ¯ËÌÓÈ 1 (ÏÂ‰ÎÂÌÌ‡ˇ, ˜ÚÓ·˚ 42Ã√ˆ (Ï‡ÍÒËÏ‡Î¸Ì‡ˇ))
-  RCC_PCLK2Config(RCC_HCLK_Div1);//‰ÂÎËÚÂÎ¸ ÔÂÂ‰ ÔÂÂÙÂËÈÌÓÈ ¯ËÌÓÈ 2 (·˚ÒÚ‡ˇ 84 Ã√ˆ Ï‡ÍÒËÏ‡Î¸ÌÓ)
-  
-  RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);       // ˜‡Ò˚ ÓÚ ÓÒˆËÎˇÚÓ‡ 32.768  √ˆ
-  RCC_RTCCLKCmd(ENABLE);                        // ‚ÍÎ˛˜ÂÌËÂ ˜‡ÒÓ‚ RTC
+    RCC_PLLConfig(RCC_PLLSource_HSE, //–≤–Ω–µ—à–Ω–∏–π –≥–µ–Ω–µ—Ä–∞—Ç–æ—Ä
+                  8,                 //–¥–µ–ª–∏—Ç–µ–ª—å M PLL (–≤—Å–µ —ç—Ç–∏ –∫–æ–Ω—Ç–∞–Ω—Ç—ã –Ω–∞ —Å—Ö–µ–º–µ PLL)
+                  84,                //–º–Ω–æ–∂–∏—Ç–µ–ª—å N PLL  = 16*84/(8*2)=84 –ú–ì—Ü
+                  2,                 //–¥–µ–ª–∏—Ç–µ–ª—å P –¥–ª—è –≥–ª–∞–≤–Ω—ã—Ö SYSCLK (2,4,6,8)
+                  4);                //(–Ω–µ –∏—Å–ø–æ–ª—å–∑—É–µ—Ç—Å—è) –¥–µ–ª–∏—Ç–µ–ª—å Q –¥–ª—è USB, OTG FS, SDIO, RNG clocks (4-15)
 
-  RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); // SW - ‚˚·Ó Ú‡ÍÚËÓ‚‡ÌËˇ ‚ PLL (ÏÓÊÌÓ HSI, HSE)
-  RCC_HSICmd(DISABLE);
-  SystemCoreClockUpdate();
- 
+    do
+    {
+        RCC_PLLCmd(ENABLE);
+    } while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) != SET);
+
+    //  RCC_HSICmd(DISABLE);  //–≤—ã–∫–ª—é—á–∞—é –≤–Ω—É—Ç—Ä–µ–Ω–Ω–∏–π –≥–µ–Ω–µ—Ä–∞—Ç–æ—Ä
+
+    RCC_HCLKConfig(RCC_SYSCLK_Div1); //–¥–µ–ª–∏—Ç–µ–ª—å –ø–µ—Ä–µ–¥ —à–∏–Ω–∞–º–∏
+    RCC_PCLK1Config(RCC_HCLK_Div2);  //–¥–µ–ª–∏—Ç–µ–ª—å –ø–µ—Ä–µ–¥ –ø–µ—Ä–µ—Ñ–µ—Ä–∏–π–Ω–æ–π —à–∏–Ω–æ–π 1 (–º–µ–¥–ª–µ–Ω–Ω–∞—è, —á—Ç–æ–±—ã 42–ú–ì—Ü (–º–∞–∫—Å–∏–º–∞–ª—å–Ω–∞—è))
+    RCC_PCLK2Config(RCC_HCLK_Div1);  //–¥–µ–ª–∏—Ç–µ–ª—å –ø–µ—Ä–µ–¥ –ø–µ—Ä–µ—Ñ–µ—Ä–∏–π–Ω–æ–π —à–∏–Ω–æ–π 2 (–±—ã—Å—Ç—Ä–∞—è 84 –ú–ì—Ü –º–∞–∫—Å–∏–º–∞–ª—å–Ω–æ)
+
+    RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // —á–∞—Å—ã –æ—Ç –æ—Å—Ü–∏–ª—è—Ç–æ—Ä–∞ 32.768 –ö–ì—Ü
+    RCC_RTCCLKCmd(ENABLE);                  // –≤–∫–ª—é—á–µ–Ω–∏–µ —á–∞—Å–æ–≤ RTC
+
+    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); // SW - –≤—ã–±–æ—Ä —Ç–∞–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏—è –≤ PLL (–º–æ–∂–Ω–æ HSI, HSE)
+    RCC_HSICmd(DISABLE);
+    SystemCoreClockUpdate();
 }
 
-
-
-//Ì‡ÒÚÓÈÍ‡ Ú‡ÈÏÂ‡ 2 (Í ¯ËÌÂ )
+//–Ω–∞—Å—Ç—Ä–æ–π–∫–∞ —Ç–∞–π–º–µ—Ä–∞ 2 (–∫ —à–∏–Ω–µ )
 void InitTimer(void)
 {
- // NVIC_InitTypeDef NVIC_InitStructure;
-  TIM_TimeBaseInitTypeDef TIM_BaseInitStructure;
-  
-  //Ú‡ÈÏÂ Í ¯ËÌÂ APB2 timer clock = 84 MHz
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
-  
-  TIM_BaseInitStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/1000000)-1; //‰ÂÎËÚÂÎ¸ Ì‡ ˜‡ÒÚÓÚÛ 1Ã√ˆ
-  TIM_BaseInitStructure.TIM_Period = 55;      // =1Ã√ˆ/18 √ˆ = 55
-  TIM_BaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up; // ÓÚ ÌÛÎˇ ‰Ó TIM_Period
-  TIM_TimeBaseInit(TIM2, &TIM_BaseInitStructure);
-  
-//ÔÂ˚‚‡ÌËÂ Ú‡ÈÏÂ‡ 2
-/*  NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+    // NVIC_InitTypeDef NVIC_InitStructure;
+    TIM_TimeBaseInitTypeDef TIM_BaseInitStructure;
+
+    //—Ç–∞–π–º–µ—Ä –∫ —à–∏–Ω–µ APB2 timer clock = 84 MHz
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+
+    TIM_BaseInitStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock / 1000000) - 1; //–¥–µ–ª–∏—Ç–µ–ª—å –Ω–∞ —á–∞—Å—Ç–æ—Ç—É 1–ú–ì—Ü
+    TIM_BaseInitStructure.TIM_Period = 55;                                           // =1–ú–ì—Ü/18–ö–ì—Ü = 55
+    TIM_BaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;                      // –æ—Ç –Ω—É–ª—è –¥–æ TIM_Period
+    TIM_TimeBaseInit(TIM2, &TIM_BaseInitStructure);
+
+    //–ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ —Ç–∞–π–º–µ—Ä–∞ 2
+    /*  NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);  */
 
-//‚ÍÎ˛˜ÂÌËÂ ÔÂ˚‚‡ÌËˇ
-  NVIC_EnableIRQ(TIM2_IRQn);
-//‡ÁÂ¯ÂÌËÂ ÔÂ˚‚‡ÌËˇ
-  TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
-//Á‡ÔÛÒÍ Ú‡ÈÏÂ‡
-  TIM_Cmd(TIM2, ENABLE);
+    //–≤–∫–ª—é—á–µ–Ω–∏–µ –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏—è
+    NVIC_EnableIRQ(TIM2_IRQn);
+    //—Ä–∞–∑—Ä–µ—à–µ–Ω–∏–µ –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏—è
+    TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+    //–∑–∞–ø—É—Å–∫ —Ç–∞–π–º–µ—Ä–∞
+    TIM_Cmd(TIM2, ENABLE);
 }
-
-
-
 
 void InitGpio(void)
 {
- 
-  GPIO_InitTypeDef GPIO_InitStructure;
-  
-  GPIO_DeInit(GPIOA);
-  GPIO_DeInit(GPIOB);
-  GPIO_DeInit(GPIOC);
-  GPIO_DeInit(GPIOD);
-  
-// Enable the GPIOA peripheral
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-  
-//Input_Output Ports
-//PA-----------------------------------------------------------------------------
-//PA0 - STOP_24 - ËÁ ¿—” “œ ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;     //Í‡ÍÓÈ ÔËÌ ‚ ÔÓÚÂ
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;  //ÂÊËÏ - ¬ıÓ‰
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz; // ÒÍÓÓÒÚ¸
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //‰‚Ûı Ú‡ÍÚÌ˚È(1,0) (Â˘∏ ÂÒÚ¸ Ò ÓÍ˚Ú˚Ï ËÒÚÓÍÓÏ)
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // ÛÍ‡Á˚‚‡ÂÚÒˇ ÔÓ‰‰ˇÊÍ‡ ‚˚‚Ó‰‡
-  GPIO_Init(GPIOA, &GPIO_InitStructure);        //Á‡ÔËÒ¸   
-//  GPIO_WriteBit(GPIOA,GPIO_Pin_0,0);            
-  GPIO_ResetBits(GPIOA, GPIO_Pin_0);      //Ì‡˜‡Î¸ÌÓÂ ÁÌ‡˜ÂÌËÂ
-  
-//PA1 - UART RTS
-//PA2 - UART Tx
-//PA3 - UART Rx
-//PA4 - SPI NSS
-//PA5 - SPI SCK
-//PA6 - SPI MISO
-//PA7 - SPI MOSI
-  
-//PA8 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //œÓ‰‰ˇÊÍ‡ Í 1
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-//PA9 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //œÓ‰‰ˇÊÍ‡ Í 1
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-//PA10 - ZV_OP - «‚ÛÍÓ‚ÓÈ ÓÔÂ‚Â˘‡ÚÂÎ¸, ËÌËˆË‡ÎËÁËÓ‚‡Ú¸ ‚ 0
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //ÌÂÚ ÔÓ‰‰ˇÊÍË
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOA,GPIO_Pin_10,0);
-  GPIO_ResetBits(GPIOA, GPIO_Pin_10);
-  
-//PA11 - DPR - —Ë„Ì‡Î ‰‡Ú˜ËÍ‡ (ÒË„Ì‡ÎËÁ‡ÚÓ‡) ÔÓÚÂ˜ÍË, ÔË ÔÓÚÂ˜ÍÂ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOA,GPIO_Pin_11,0);
-  GPIO_ResetBits(GPIOA, GPIO_Pin_11);
-  
-//PA12 - DVR - ÒË„Ì‡Î ‰‡Ú˜ËÍ‡ ‚‡˘ÂÌËˇ, ÏË‡Ì‰ ˜‡ÒÚÓÚÓÈ 10-1000 √ˆ
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOA,GPIO_Pin_12,0);
-  GPIO_ResetBits(GPIOA, GPIO_Pin_12);
-  
-  
-  
-//PB--------------------------------------------------------------------------
-//PB0 - ADC - 420DVB - ÂÁÂ‚Ì˚È ÒË„Ì‡Î ‰‡Ú˜ËÍ‡ ‚Ë·‡ˆËË
-//PB1 - ADC - V_220  Ì‡ÔˇÊÂÌËÂ Ì‡ ¡ —
-  
-//PB2 - PUSK_KON - ‚ÍÎ˛˜ÂÌËÂ ÒËÎÓ‚Ó„Ó ÍÓÌÚ‡ÍÚÓ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_2,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_2);
-  
-//PB5 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //œÓ‰‰ˇÊÍ‡ Í 1
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  
-//PB6 - K1_BKS_RAB - —Ë„Ì‡Î ˜ÚÓ ‚ÍÎ˛˜ÂÌ ÔÂ‚˚È ÍÓÌÚ‡ÍÚÓ Â‚ÂÒË‚ÌÓ„Ó ÔÛÒÍ‡ÚÂÎˇ ¡ —
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //ÌÂÚ ÔÓ‰‰ˇÊÍË
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_6,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_6);
-  
-//PB7 - K2_BKS_RAB - —Ë„Ì‡Î ˜ÚÓ ‚ÍÎ˛˜ÂÌ ‚ÚÓÓÈ ÍÓÌÚ‡ÍÚÓ Â‚ÂÒË‚ÌÓ„Ó ÔÛÒÍ‡ÚÂÎˇ ¡ —
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_7,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_7);
-  
-//PB8 - K_VIK1 - —Ë„Ì‡Î Ò ÍÓÌˆÂ‚Ó„Ó ‚˚ÍÎ˛˜‡ÚÂÎˇ 1 ÔË‚Ó‰‡ ÔÓ‚ÓÓÚ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_8,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-  
-//PB9 - K_VIK2 - —Ë„Ì‡Î Ò ÍÓÌˆÂ‚Ó„Ó ‚˚ÍÎ˛˜‡ÚÂÎˇ 2 ÔË‚Ó‰‡ ÔÓ‚ÓÓÚ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_9,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_9);
-  
-//PB10 - STOP_KON - ŒÚÍÎ˛˜ÂÌËÂ ÒËÎÓ‚Ó„Ó ÍÓÌÚ‡ÍÚÓ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_10,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_10);
-  
-//PB12 - AVAR_ASU - —Ë„‡Ì‡Î Ó· ‡‚‡ËË, ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_12,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-  
-//PB13 - RAB_ASU - —Ë„Ì‡Î Ó ‡·ÓÚÂ, ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOB,GPIO_Pin_13,0);
-  GPIO_ResetBits(GPIOB, GPIO_Pin_13);
-  
-//PB14 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  
-//PB15 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //ÔÓ‰‰ˇÊÍ‡ Í 1
-  GPIO_Init(GPIOB, &GPIO_InitStructure);  
-  
-  
-//PC---------------------------------------------------------------
-//P—0 - ADC - 420DVB - ÂÁÂ‚Ì˚È ÒË„Ì‡Î ‰‡Ú˜ËÍ‡ ‚Ë·‡ˆËË
-//P—1 - ADC - V_220  Ì‡ÔˇÊÂÌËÂ Ì‡ ¡ —
-  
-//PC2 - PUSK_220  - ËÁ ¿—” “œ ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //ÌÂÚ ÔÓ‰‰ˇÊÍË
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_2,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_2);
-  
-//PC3 - PUSK_24 - ËÁ ¿—” “œ ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_3,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_3);
-  
-//PC4 - ADC - TMP_ED1
-//PC5 - ADC - TMP_P1
-  
-//PC6 - ÂÁÂ‚, ‡ÔÔ‡‡ÚÌÓ ÔÓ‰ÚˇÌÛÚ Í 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);  
-  
-//PC8 - CPU_LED - «‡ÊË„‡ÂÚ ‰ËÓ‰ Ì‡ ÔÎ‡ÚÂ, ¿ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_8,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_8);
-  
-//PC10 - SV_OP - —‚ÂÚÓ‚‡ˇ ÒË„Ì‡ÎËÁ. ËÌËˆË‡ÎËÁËÓ‚‡Ú¸ ‚ 0
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_10,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_10);
-  
-//PC11 - K2_BKS_ON - —Ë„Ì‡Î Á‡Ï˚Í‡ÌËˇ ‚ÚÓÓ„Ó ÍÓÌÚ‡ÍÚÓ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_11,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_11);
-  
-//PC12 - K1_BKS_ON - —Ë„Ì‡Î Á‡Ï˚Í‡ÌËˇ ÔÂ‚Ó„Ó ÍÓÌÚ‡ÍÚÓ‡
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOC,GPIO_Pin_12,0);
-  GPIO_ResetBits(GPIOC, GPIO_Pin_12);
 
-  
-//PD-------------------------------------------------------------------------
-//STOP_220 (PD2) - ËÁ ¿—” “œ ‡ÍÚË‚Ì˚È ÛÓ‚ÂÌ¸ 1
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_Init(GPIOD, &GPIO_InitStructure);
-  //GPIO_WriteBit(GPIOD,GPIO_Pin_2,0);
-  GPIO_ResetBits(GPIOD, GPIO_Pin_2);
-  
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    GPIO_DeInit(GPIOA);
+    GPIO_DeInit(GPIOB);
+    GPIO_DeInit(GPIOC);
+    GPIO_DeInit(GPIOD);
+
+    // Enable the GPIOA peripheral
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+
+    //Input_Output Ports
+    //PA-----------------------------------------------------------------------------
+    //PA0 - STOP_24 - –∏–∑ –ê–°–£ –¢–ü –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;        //–∫–∞–∫–æ–π –ø–∏–Ω –≤ –ø–æ—Ä—Ç–µ
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;     //—Ä–µ–∂–∏–º - –í—Ö–æ–¥
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz; // —Å–∫–æ—Ä–æ—Å—Ç—å
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;   //–¥–≤—É—Ö —Ç–∞–∫—Ç–Ω—ã–π(1,0) (–µ—â—ë –µ—Å—Ç—å —Å –æ–∫—Ä—ã—Ç—ã–º –∏—Å—Ç–æ–∫–æ–º)
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // —É–∫–∞–∑—ã–≤–∞–µ—Ç—Å—è –ø–æ–¥–¥—è–∂–∫–∞ –≤—ã–≤–æ–¥–∞
+    GPIO_Init(GPIOA, &GPIO_InitStructure);           //–∑–∞–ø–∏—Å—å
+                                                     //  GPIO_WriteBit(GPIOA,GPIO_Pin_0,0);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_0);               //–Ω–∞—á–∞–ª—å–Ω–æ–µ –∑–Ω–∞—á–µ–Ω–∏–µ
+
+    //PA1 - UART RTS
+    //PA2 - UART Tx
+    //PA3 - UART Rx
+    //PA4 - SPI NSS
+    //PA5 - SPI SCK
+    //PA6 - SPI MISO
+    //PA7 - SPI MOSI
+
+    //PA8 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //–ü–æ–¥–¥—è–∂–∫–∞ –∫ 1
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    //PA9 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //–ü–æ–¥–¥—è–∂–∫–∞ –∫ 1
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    //PA10 - ZV_OP - –ó–≤—É–∫–æ–≤–æ–π –æ–ø–µ–≤–µ—â–∞—Ç–µ–ª—å, –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∏—Ä–æ–≤–∞—Ç—å –≤ 0
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //–Ω–µ—Ç –ø–æ–¥–¥—è–∂–∫–∏
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOA,GPIO_Pin_10,0);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_10);
+
+    //PA11 - DPR - –°–∏–≥–Ω–∞–ª –¥–∞—Ç—á–∏–∫–∞ (—Å–∏–≥–Ω–∞–ª–∏–∑–∞—Ç–æ—Ä–∞) –ø—Ä–æ—Ç–µ—á–∫–∏, –ø—Ä–∏ –ø—Ä–æ—Ç–µ—á–∫–µ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOA,GPIO_Pin_11,0);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_11);
+
+    //PA12 - DVR - —Å–∏–≥–Ω–∞–ª –¥–∞—Ç—á–∏–∫–∞ –≤—Ä–∞—â–µ–Ω–∏—è, –º–∏–∞–Ω–¥—Ä —á–∞—Å—Ç–æ—Ç–æ–π 10-1000 –ì—Ü
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOA,GPIO_Pin_12,0);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_12);
+
+    //PB--------------------------------------------------------------------------
+    //PB0 - ADC - 420DVB - —Ä–µ–∑–µ—Ä–≤–Ω—ã–π —Å–∏–≥–Ω–∞–ª –¥–∞—Ç—á–∏–∫–∞ –≤–∏–±—Ä–∞—Ü–∏–∏
+    //PB1 - ADC - V_220  –Ω–∞–ø—Ä—è–∂–µ–Ω–∏–µ –Ω–∞ –ë–ö–°
+
+    //PB2 - PUSK_KON - –≤–∫–ª—é—á–µ–Ω–∏–µ —Å–∏–ª–æ–≤–æ–≥–æ –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_2,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_2);
+
+    //PB5 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //–ü–æ–¥–¥—è–∂–∫–∞ –∫ 1
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    //PB6 - K1_BKS_RAB - –°–∏–≥–Ω–∞–ª —á—Ç–æ –≤–∫–ª—é—á–µ–Ω –ø–µ—Ä–≤—ã–π –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä —Ä–µ–≤–µ—Ä—Å–∏–≤–Ω–æ–≥–æ –ø—É—Å–∫–∞—Ç–µ–ª—è –ë–ö–°
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //–Ω–µ—Ç –ø–æ–¥–¥—è–∂–∫–∏
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_6,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_6);
+
+    //PB7 - K2_BKS_RAB - –°–∏–≥–Ω–∞–ª —á—Ç–æ –≤–∫–ª—é—á–µ–Ω –≤—Ç–æ—Ä–æ–π –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä —Ä–µ–≤–µ—Ä—Å–∏–≤–Ω–æ–≥–æ –ø—É—Å–∫–∞—Ç–µ–ª—è –ë–ö–°
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_7,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_7);
+
+    //PB8 - K_VIK1 - –°–∏–≥–Ω–∞–ª —Å –∫–æ–Ω—Ü–µ–≤–æ–≥–æ –≤—ã–∫–ª—é—á–∞—Ç–µ–ª—è 1 –ø—Ä–∏–≤–æ–¥–∞ –ø–æ–≤–æ—Ä–æ—Ç–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_8,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+
+    //PB9 - K_VIK2 - –°–∏–≥–Ω–∞–ª —Å –∫–æ–Ω—Ü–µ–≤–æ–≥–æ –≤—ã–∫–ª—é—á–∞—Ç–µ–ª—è 2 –ø—Ä–∏–≤–æ–¥–∞ –ø–æ–≤–æ—Ä–æ—Ç–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_9,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_9);
+
+    //PB10 - STOP_KON - –û—Ç–∫–ª—é—á–µ–Ω–∏–µ —Å–∏–ª–æ–≤–æ–≥–æ –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_10,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_10);
+
+    //PB12 - AVAR_ASU - –°–∏–≥–∞–Ω–∞–ª –æ–± –∞–≤–∞—Ä–∏–∏, –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_12,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+
+    //PB13 - RAB_ASU - –°–∏–≥–Ω–∞–ª –æ —Ä–∞–±–æ—Ç–µ, –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOB,GPIO_Pin_13,0);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_13);
+
+    //PB14 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    //PB15 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //–ø–æ–¥–¥—è–∂–∫–∞ –∫ 1
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    //PC---------------------------------------------------------------
+    //P–°0 - ADC - 420DVB - —Ä–µ–∑–µ—Ä–≤–Ω—ã–π —Å–∏–≥–Ω–∞–ª –¥–∞—Ç—á–∏–∫–∞ –≤–∏–±—Ä–∞—Ü–∏–∏
+    //P–°1 - ADC - V_220  –Ω–∞–ø—Ä—è–∂–µ–Ω–∏–µ –Ω–∞ –ë–ö–°
+
+    //PC2 - PUSK_220  - –∏–∑ –ê–°–£ –¢–ü –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //–Ω–µ—Ç –ø–æ–¥–¥—è–∂–∫–∏
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_2,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_2);
+
+    //PC3 - PUSK_24 - –∏–∑ –ê–°–£ –¢–ü –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_3,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_3);
+
+    //PC4 - ADC - TMP_ED1
+    //PC5 - ADC - TMP_P1
+
+    //PC6 - —Ä–µ–∑–µ—Ä–≤, –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ –ø–æ–¥—Ç—è–Ω—É—Ç –∫ 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    //PC8 - CPU_LED - –ó–∞–∂–∏–≥–∞–µ—Ç –¥–∏–æ–¥ –Ω–∞ –ø–ª–∞—Ç–µ, –ê–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_8,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_8);
+
+    //PC10 - SV_OP - –°–≤–µ—Ç–æ–≤–∞—è —Å–∏–≥–Ω–∞–ª–∏–∑. –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∏—Ä–æ–≤–∞—Ç—å –≤ 0
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_10,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_10);
+
+    //PC11 - K2_BKS_ON - –°–∏–≥–Ω–∞–ª –∑–∞–º—ã–∫–∞–Ω–∏—è –≤—Ç–æ—Ä–æ–≥–æ –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_11,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_11);
+
+    //PC12 - K1_BKS_ON - –°–∏–≥–Ω–∞–ª –∑–∞–º—ã–∫–∞–Ω–∏—è –ø–µ—Ä–≤–æ–≥–æ –∫–æ–Ω—Ç–∞–∫—Ç–æ—Ä–∞
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOC,GPIO_Pin_12,0);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_12);
+
+    //PD-------------------------------------------------------------------------
+    //STOP_220 (PD2) - –∏–∑ –ê–°–£ –¢–ü –∞–∫—Ç–∏–≤–Ω—ã–π —É—Ä–æ–≤–µ–Ω—å 1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+    //GPIO_WriteBit(GPIOD,GPIO_Pin_2,0);
+    GPIO_ResetBits(GPIOD, GPIO_Pin_2);
 }
-
-
-
 
 void InitSpi(void)
 {
-  //SPI
-  GPIO_InitTypeDef GPIO_InitStructure;
-  SPI_InitTypeDef SPI_InitStructure;
-  
-  // “‡ÍÚËÓ‚‡ÌËÂ ÏÓ‰ÛÎˇ SPI1
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
-  
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;//CLK, MOSI,MISO
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-// Õ‡ÒÚ‡Ë‚‡ÂÏ ÌÓ„Ë SPI1 ‰Îˇ ‡·ÓÚ˚ ‚ ÂÊËÏÂ ‡Î¸ÚÂÌ‡ÚË‚ÌÓÈ ÙÛÌÍˆËË
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_SPI1);       // SCK
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_SPI1);       // MISO
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_SPI1);       // MOSI
-  
-  
-  SPI_DeInit(SPI1);
-//«‡ÔÓÎÌˇÂÏ ÒÚÛÍÚÛÛ Ò Ô‡‡ÏÂÚ‡ÏË SPI ÏÓ‰ÛÎˇ
-  SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;    //ÔÂÂ‰‡˜‡ ‚ Ó·Â ÒÚÓÓÌ˚
-  SPI_InitStructure.SPI_Mode = SPI_Mode_Master;                          // –ÂÊËÏ - ¬Â‰ÓÏ˚È
-  SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;                     // ÔÂÂ‰‡ÂÏ ÔÓ 8 ·ËÚ
-  SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;                           // œÓÎˇÌÓÒÚ¸ (ÛÓ‚ÂÌ¸ ÚË¯ËÌ˚ = Low) Ë
-  SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;                          // Ù‡Á‡ Ú‡ÍÚÓ‚Ó„Ó ÒË„Ì‡Î‡ (ÔÓ ÔÂ‚ÓÏÛ ÙÓÌÛ SCK)
-  SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;                             // ”Ô‡‚ÎˇÚ¸ ÒÓÒÚÓˇÌËÂÏ ÒË„Ì‡Î‡ NSS ÔÓ„‡ÏÏÌÓ (·ËÚ SSI)
-  SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;    // œÂ‰‰ÂÎËÚÂÎ¸ SCK
-  SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;                    // œÂ‚˚Ï ÓÚÔ‡‚ÎˇÂÚÒˇ ÒÚ‡¯ËÈ ·ËÚ
-  SPI_InitStructure.SPI_CRCPolynomial = 7;                              // ÕÂ ˛Á‡˛ CRC
-  SPI_Init(SPI1, &SPI_InitStructure);                                   //Õ‡ÒÚ‡Ë‚‡ÂÏ SPI1
-    
-  NVIC_EnableIRQ(SPI1_IRQn); //–‡ÁÂ¯‡ÂÏ ÔÂ˚‚‡ÌËˇ ÓÚ SPI1
-  SPI_ITConfig(SPI1, SPI_I2S_IT_RXNE, ENABLE); // ÔÂ˚‚‡ÌËÂ SPI ÔÓ ÔËÂÏÛ
-//  SPI_ITConfig(SPI1, SPI_I2S_IT_TXE, ENABLE); // ÔÂ˚‚‡ÌËÂ SPI ÔÓ ÔÂÂ‰‡˜Â
-  
-//  SPI_CalculateCRC(SPI1, DISABLE);
-  
-// ¬ÍÎ˛˜‡ÂÏ ÏÓ‰ÛÎ¸ SPI1....
-  SPI_Cmd(SPI1, ENABLE);
-  
-//”ÒÚ‡Ì‡‚ÎË‚‡ÂÚ/Ò·‡Ò˚‚‡ÂÚ (Ï‡ÒÚÂ/‚Â‰ÓÏ˚È) ·ËÚ SSI (ÔÓ„‡ÏÌ‡ˇ ËÏËÚ‡ˆËˇ ‚˚‚Ó‰‡ NSS)
-  SPI_NSSInternalSoftwareConfig(SPI1, SPI_NSSInternalSoft_Set);
+    //SPI
+    GPIO_InitTypeDef GPIO_InitStructure;
+    SPI_InitTypeDef SPI_InitStructure;
+
+    // –¢–∞–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏–µ –º–æ–¥—É–ª—è SPI1
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7; //CLK, MOSI,MISO
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // –ù–∞—Å—Ç—Ä–∞–∏–≤–∞–µ–º –Ω–æ–≥–∏ SPI1 –¥–ª—è —Ä–∞–±–æ—Ç—ã –≤ —Ä–µ–∂–∏–º–µ –∞–ª—å—Ç–µ—Ä–Ω–∞—Ç–∏–≤–Ω–æ–π —Ñ—É–Ω–∫—Ü–∏–∏
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_SPI1); // SCK
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_SPI1); // MISO
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_SPI1); // MOSI
+
+    SPI_DeInit(SPI1);
+    //–ó–∞–ø–æ–ª–Ω—è–µ–º —Å—Ç—Ä—É–∫—Ç—É—Ä—É —Å –ø–∞—Ä–∞–º–µ—Ç—Ä–∞–º–∏ SPI –º–æ–¥—É–ª—è
+    SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;   //–ø–µ—Ä–µ–¥–∞—á–∞ –≤ –æ–±–µ —Å—Ç–æ—Ä–æ–Ω—ã
+    SPI_InitStructure.SPI_Mode = SPI_Mode_Master;                        // –†–µ–∂–∏–º - –í–µ–¥–æ–º—ã–π
+    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;                    // –ø–µ—Ä–µ–¥–∞–µ–º –ø–æ 8 –±–∏—Ç
+    SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;                           // –ü–æ–ª—è—Ä–Ω–æ—Å—Ç—å (—É—Ä–æ–≤–µ–Ω—å —Ç–∏—à–∏–Ω—ã = Low) –∏
+    SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;                         // —Ñ–∞–∑–∞ —Ç–∞–∫—Ç–æ–≤–æ–≥–æ —Å–∏–≥–Ω–∞–ª–∞ (–ø–æ –ø–µ—Ä–≤–æ–º—É —Ñ—Ä–æ–Ω—É SCK)
+    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;                            // –£–ø—Ä–∞–≤–ª—è—Ç—å —Å–æ—Å—Ç–æ—è–Ω–∏–µ–º —Å–∏–≥–Ω–∞–ª–∞ NSS –ø—Ä–æ–≥—Ä–∞–º–º–Ω–æ (–±–∏—Ç SSI)
+    SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256; // –ü—Ä–µ–¥–¥–µ–ª–∏—Ç–µ–ª—å SCK
+    SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;                   // –ü–µ—Ä–≤—ã–º –æ—Ç–ø—Ä–∞–≤–ª—è–µ—Ç—Å—è —Å—Ç–∞—Ä—à–∏–π –±–∏—Ç
+    SPI_InitStructure.SPI_CRCPolynomial = 7;                             // –ù–µ —é–∑–∞—é CRC
+    SPI_Init(SPI1, &SPI_InitStructure);                                  //–ù–∞—Å—Ç—Ä–∞–∏–≤–∞–µ–º SPI1
+
+    NVIC_EnableIRQ(SPI1_IRQn);                   //–†–∞–∑—Ä–µ—à–∞–µ–º –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏—è –æ—Ç SPI1
+    SPI_ITConfig(SPI1, SPI_I2S_IT_RXNE, ENABLE); // –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ SPI –ø–æ –ø—Ä–∏–µ–º—É
+                                                 //  SPI_ITConfig(SPI1, SPI_I2S_IT_TXE, ENABLE); // –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ SPI –ø–æ –ø–µ—Ä–µ–¥–∞—á–µ
+
+    //  SPI_CalculateCRC(SPI1, DISABLE);
+
+    // –í–∫–ª—é—á–∞–µ–º –º–æ–¥—É–ª—å SPI1....
+    SPI_Cmd(SPI1, ENABLE);
+
+    //–£—Å—Ç–∞–Ω–∞–≤–ª–∏–≤–∞–µ—Ç/—Å–±—Ä–∞—Å—ã–≤–∞–µ—Ç (–º–∞—Å—Ç–µ—Ä/–≤–µ–¥–æ–º—ã–π) –±–∏—Ç SSI (–ø—Ä–æ–≥—Ä–∞–º–Ω–∞—è –∏–º–∏—Ç–∞—Ü–∏—è –≤—ã–≤–æ–¥–∞ NSS)
+    SPI_NSSInternalSoftwareConfig(SPI1, SPI_NSSInternalSoft_Set);
 }
-
-
-
 
 void InitUart(void)
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  USART_InitTypeDef USART_InitStructure;
-  
-//“‡ÍÚËÓ‚‡ÌËÂ UART
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-    
-//Init ÔËÌÓ‚
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //UP
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-  
-  //RTS - ‚Û˜ÌÛ˛, ÛÔ‡‚ÎÂÌËÂ ÂÊËÏÓÏ ÔËÂÏ‡ (0) Ë ÔÂÂ‰‡˜Ë (1)
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  GPIO_ResetBits(GPIOA, GPIO_Pin_1);
-  
-//œÓ‰ÍÎ˛˜‡˛ ÔËÌ˚ Í UART (ÔÓÚÓÏÛ ˜ÚÓ ‰Îˇ UART1 ÂÒÚ¸ ÌÂÒÍÓÎ¸ÍÓ
-//                        ‰Û·ÎËÛ˛˘Ëı ‚˚‚Ó‰Ó‚, Ì‡‰Ó ÛÍ‡Á‡Ú¸)
-//  GPIO_PinAFConfig(GPIOA, GPIO_PinSource1 ,GPIO_AF_USART2); //RTS
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource2 ,GPIO_AF_USART2); //TX
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource3 ,GPIO_AF_USART2); //RX
+    GPIO_InitTypeDef GPIO_InitStructure;
+    USART_InitTypeDef USART_InitStructure;
 
-  
-//Init ‰Îˇ Ò‡ÏÓ„Ó UART
-  USART_InitStructure.USART_BaudRate = UART_SPEED;    //Ã‡ÍÒËÏ‡Î¸ÌÓ 2625000 Ò 16 ·ËÚ
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_2;        // œÓ ÔÓÚÓÍÓÎÛ 2 ÒÚÓÔ ·ËÚ‡
-  USART_InitStructure.USART_Parity = USART_Parity_No;   // ÕÂÚÛ ˜ÂÚÌÓÒÚË
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // ÕÂÚÛ ÛÔ‡‚ÎÂÌËˇ ÔÓÚÓÍÓÏ
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-  USART_Init(USART2, &USART_InitStructure);
-  
-//‚ÍÎ ÔÂ˚‚‡ÌËÂ UART
-  NVIC_EnableIRQ(USART2_IRQn);
-//ÔÂ˚‚‡ÌËÂ Ì‡ ÔËÂÏ Ë ÔÂÂ‰‡˜Û
-  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); //Û·‡Î ÔÓÚÓÏÛ ˜ÚÓ ÔË Á‡ÔÛÒÍÂ ÔÓËÒıÓ‰ËÚ ÔÂ˚‚‡ÌËÂ ÔÓ ÔËÂÏÛ
-  USART_ITConfig(USART2, USART_IT_TC, ENABLE);
-  
-//¬ÍÎ UART
-  USART_Cmd(USART2, ENABLE);
+    //–¢–∞–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏–µ UART
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+
+    //Init –ø–∏–Ω–æ–≤
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //UP
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    //RTS - –≤—Ä—É—á–Ω—É—é, —É–ø—Ä–∞–≤–ª–µ–Ω–∏–µ —Ä–µ–∂–∏–º–æ–º –ø—Ä–∏–µ–º–∞ (0) –∏ –ø–µ—Ä–µ–¥–∞—á–∏ (1)
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+
+    //–ü–æ–¥–∫–ª—é—á–∞—é –ø–∏–Ω—ã –∫ UART (–ø–æ—Ç–æ–º—É —á—Ç–æ –¥–ª—è UART1 –µ—Å—Ç—å –Ω–µ—Å–∫–æ–ª—å–∫–æ
+    //                        –¥—É–±–ª–∏—Ä—É—é—â–∏—Ö –≤—ã–≤–æ–¥–æ–≤, –Ω–∞–¥–æ —É–∫–∞–∑–∞—Ç—å)
+    //  GPIO_PinAFConfig(GPIOA, GPIO_PinSource1 ,GPIO_AF_USART2); //RTS
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2); //TX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2); //RX
+
+    //Init –¥–ª—è —Å–∞–º–æ–≥–æ UART
+    USART_InitStructure.USART_BaudRate = UART_SPEED; //–ú–∞–∫—Å–∏–º–∞–ª—å–Ω–æ 2625000 —Å 16 –±–∏—Ç
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_2;                          // –ü–æ –ø—Ä–æ—Ç–æ–∫–æ–ª—É 2 —Å—Ç–æ–ø –±–∏—Ç–∞
+    USART_InitStructure.USART_Parity = USART_Parity_No;                             // –ù–µ—Ç—É —á–µ—Ç–Ω–æ—Å—Ç–∏
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // –ù–µ—Ç—É —É–ø—Ä–∞–≤–ª–µ–Ω–∏—è –ø–æ—Ç–æ–∫–æ–º
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_Init(USART2, &USART_InitStructure);
+
+    //–≤–∫–ª –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ UART
+    NVIC_EnableIRQ(USART2_IRQn);
+    //–ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ –Ω–∞ –ø—Ä–∏–µ–º –∏ –ø–µ—Ä–µ–¥–∞—á—É
+    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); //—É–±—Ä–∞–ª –ø–æ—Ç–æ–º—É —á—Ç–æ –ø—Ä–∏ –∑–∞–ø—É—Å–∫–µ –ø—Ä–æ–∏—Å—Ö–æ–¥–∏—Ç –ø—Ä–µ—Ä—ã–≤–∞–Ω–∏–µ –ø–æ –ø—Ä–∏–µ–º—É
+    USART_ITConfig(USART2, USART_IT_TC, ENABLE);
+
+    //–í–∫–ª UART
+    USART_Cmd(USART2, ENABLE);
 }
 
-
-
-///ADC1 Ú.Í. ‚ STM32f401RE ÌÂÚÛ ADC2, ADC3
+///ADC1 —Ç.–∫. –≤ STM32f401RE –Ω–µ—Ç—É ADC2, ADC3
 void InitAdc(void)
 {
-  ADC_InitTypeDef ADC_InitStricture;
-  ADC_CommonInitTypeDef ADC_CommonInitStruct;
-  GPIO_InitTypeDef GPIO_InitStructure;
-  
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,ENABLE); //‚ÍÎ˛˜‡ÂÏ Ú‡ÍÚËÓ‚‡ÌËÂ ‡ˆÔ1
-  
-  ADC_DeInit(); //Ò·‡Ò˚‚‡ÂÏ Ì‡ÒÚÓÈÍË ¿÷œ ÔÓ ÛÏÓÎ˜‡ÌË˛
-  
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;    //ÂÊËÏ - ‡Ì‡ÎÓ„Ó‚˚È ‚ıÓ‰ (¿÷œ)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;       //ÌÓÊÍ‡
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);          //Á‡ÔËÒ‡Ú¸ Ì‡ÒÚÓÈÍË
-  
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  
-  
-  ADC_CommonInitStruct.ADC_Mode                 =ADC_Mode_Independent;
-  ADC_CommonInitStruct.ADC_Prescaler            =ADC_Prescaler_Div2;    //ÔÂ‰‰ÂÎËÚÂÎ¸ ˜‡ÒÚÓÚ˚ ADC
-  ADC_CommonInitStruct.ADC_DMAAccessMode        =ADC_DMAAccessMode_Disabled;
-  ADC_CommonInitStruct.ADC_TwoSamplingDelay     =ADC_TwoSamplingDelay_5Cycles;
-  ADC_CommonInit(&ADC_CommonInitStruct);
+    ADC_InitTypeDef ADC_InitStricture;
+    ADC_CommonInitTypeDef ADC_CommonInitStruct;
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-  
-//—‡Ï ¿÷œ
-  ADC_InitStricture.ADC_Resolution = ADC_Resolution_12b;        //12 ·ËÚ
-  ADC_InitStricture.ADC_ScanConvMode = ENABLE;                  //ÌÂÒÍÓÎ¸ÍÓ Í‡Ì‡ÎÓ‚ (DISABLE 1 Í‡Ì‡Î)
-  ADC_InitStricture.ADC_ContinuousConvMode = ENABLE;             //ÌÂÔÂ˚‚ÌÓÂ ÔÓÂÓ·‡ÁÓ‚‡ÌËÂ
-  ADC_InitStricture.ADC_ExternalTrigConv = ADC_ExternalTrigConvEdge_None; //ÌÂ ËÒÔÓÎ¸ÁÓ‚‡Ú¸ ÚË„„Â
-  ADC_InitStricture.ADC_DataAlign = ADC_DataAlign_Right;        //‚˚‡‚ÌË‚‡ÌËÂ ÂÁÛÎ¸Ú‡Ú‡ ÔÓ Ô‡‚ÓÏÛ Í‡˛
-  ADC_InitStricture.ADC_NbrOfConversion = 6;                    //ËÒÔÓÎ¸ÁÓ‚‡Ú¸ 6 Í‡Ì‡ÎÓ‚ ¿÷œ
- 
-//Á‡ÔËÒ¸ Ì‡ÒÚÓÂÍ
-  ADC_Init(ADC1, &ADC_InitStricture);
-  
-//Ì‡ÒÚÓÈÍ‡ Í‡Ì‡ÎÓ‚ ¿÷œ (ADC_SampleTime_3Cycles ˜ÂÏ ·ÓÎ¸¯Â ÚÂÏ ÚÓ˜ÌÂÂ, ÌÓ ÏÂ‰ÎÂÌÂÂ)
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 1, ADC_SampleTime_3Cycles);  // TMP_P2
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 2, ADC_SampleTime_3Cycles);  // TMP_T
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 3, ADC_SampleTime_3Cycles); // TMP_ED1
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 4, ADC_SampleTime_3Cycles); // TMP_P1
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 5, ADC_SampleTime_3Cycles); // DVB
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 6, ADC_SampleTime_3Cycles); // V_220
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //–≤–∫–ª—é—á–∞–µ–º —Ç–∞–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏–µ –∞—Ü–ø1
 
-  
-  ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
-  
-  ADC_DMACmd(ADC1, ENABLE);
-  
-  //ADC_ContinuousModeCmd(ADC1,ENABLE);
-  
-  ADC_Cmd(ADC1,ENABLE); //‚ÍÎ˛˜ËÚ¸ ¿÷œ
-  ADC_SoftwareStartConv(ADC1);
-  
+    ADC_DeInit(); //—Å–±—Ä–∞—Å—ã–≤–∞–µ–º –Ω–∞—Å—Ç—Ä–æ–π–∫–∏ –ê–¶–ü –ø–æ —É–º–æ–ª—á–∞–Ω–∏—é
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;           //—Ä–µ–∂–∏–º - –∞–Ω–∞–ª–æ–≥–æ–≤—ã–π –≤—Ö–æ–¥ (–ê–¶–ü)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1; //–Ω–æ–∂–∫–∞
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOB, &GPIO_InitStructure); //–∑–∞–ø–∏—Å–∞—Ç—å –Ω–∞—Å—Ç—Ä–æ–π–∫–∏
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    ADC_CommonInitStruct.ADC_Mode = ADC_Mode_Independent;
+    ADC_CommonInitStruct.ADC_Prescaler = ADC_Prescaler_Div2; //–ø—Ä–µ–¥–¥–µ–ª–∏—Ç–µ–ª—å —á–∞—Å—Ç–æ—Ç—ã ADC
+    ADC_CommonInitStruct.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+    ADC_CommonInitStruct.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+    ADC_CommonInit(&ADC_CommonInitStruct);
+
+    //–°–∞–º –ê–¶–ü
+    ADC_InitStricture.ADC_Resolution = ADC_Resolution_12b;                  //12 –±–∏—Ç
+    ADC_InitStricture.ADC_ScanConvMode = ENABLE;                            //–Ω–µ—Å–∫–æ–ª—å–∫–æ –∫–∞–Ω–∞–ª–æ–≤ (DISABLE 1 –∫–∞–Ω–∞–ª)
+    ADC_InitStricture.ADC_ContinuousConvMode = ENABLE;                      //–Ω–µ–ø—Ä–µ—Ä—ã–≤–Ω–æ–µ –ø—Ä–æ–µ–æ–±—Ä–∞–∑–æ–≤–∞–Ω–∏–µ
+    ADC_InitStricture.ADC_ExternalTrigConv = ADC_ExternalTrigConvEdge_None; //–Ω–µ –∏—Å–ø–æ–ª—å–∑–æ–≤–∞—Ç—å —Ç—Ä–∏–≥–≥–µ—Ä
+    ADC_InitStricture.ADC_DataAlign = ADC_DataAlign_Right;                  //–≤—ã—Ä–∞–≤–Ω–∏–≤–∞–Ω–∏–µ —Ä–µ–∑—É–ª—å—Ç–∞—Ç–∞ –ø–æ –ø—Ä–∞–≤–æ–º—É –∫—Ä–∞—é
+    ADC_InitStricture.ADC_NbrOfConversion = 6;                              //–∏—Å–ø–æ–ª—å–∑–æ–≤–∞—Ç—å 6 –∫–∞–Ω–∞–ª–æ–≤ –ê–¶–ü
+
+    //–∑–∞–ø–∏—Å—å –Ω–∞—Å—Ç—Ä–æ–µ–∫
+    ADC_Init(ADC1, &ADC_InitStricture);
+
+    //–Ω–∞—Å—Ç—Ä–æ–π–∫–∞ –∫–∞–Ω–∞–ª–æ–≤ –ê–¶–ü (ADC_SampleTime_3Cycles —á–µ–º –±–æ–ª—å—à–µ —Ç–µ–º —Ç–æ—á–Ω–µ–µ, –Ω–æ –º–µ–¥–ª–µ–Ω–µ–µ)
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 1, ADC_SampleTime_3Cycles);  // TMP_P2
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 2, ADC_SampleTime_3Cycles);  // TMP_T
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 3, ADC_SampleTime_3Cycles); // TMP_ED1
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 4, ADC_SampleTime_3Cycles); // TMP_P1
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 5, ADC_SampleTime_3Cycles); // DVB
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 6, ADC_SampleTime_3Cycles); // V_220
+
+    ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
+
+    ADC_DMACmd(ADC1, ENABLE);
+
+    //ADC_ContinuousModeCmd(ADC1,ENABLE);
+
+    ADC_Cmd(ADC1, ENABLE); //–≤–∫–ª—é—á–∏—Ç—å –ê–¶–ü
+    ADC_SoftwareStartConv(ADC1);
 }
 
-
-
-// Õ‡ÒÚÓÈÍ‡ DMA Í‡Ì‡Î‡ ‰Îˇ ÔÂÂ‰‡˜Ë ÔÓ //ÔÓ Ï‡ÌÛ‡ÎÛ ADC1 Í ÔÂ‚ÓÏÛ Í‡Ì‡ÎÛ DMA
-void InitDma (void)
+// –ù–∞—Å—Ç—Ä–æ–π–∫–∞ DMA –∫–∞–Ω–∞–ª–∞ –¥–ª—è –ø–µ—Ä–µ–¥–∞—á–∏ –ø–æ //–ø–æ –º–∞–Ω—É–∞–ª—É ADC1 –∫ –ø–µ—Ä–≤–æ–º—É –∫–∞–Ω–∞–ª—É DMA
+void InitDma(void)
 {
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
 
-  DMA_InitTypeDef DMA_InitStructure;
+    DMA_InitTypeDef DMA_InitStructure;
 
-  DMA_InitStructure.DMA_Channel = DMA_Channel_0;                //ADC1 ‚ËÒËÚ Ì‡ ÔÂ‚ÓÏ Í‡Ì‡ÎÂ DMA
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;       //ÓÚÍÛ‰‡ ‰‡ÌÌ˚Â
-  DMA_InitStructure.DMA_Memory0BaseAddr = (Uns)&g_RomData.AdcDataPointStruct;   // Û‰‡ ÔË¯ÂÏ
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;               //ÔÂÂ‰‡˜‡ Ò ÔÂÂÙÂËË ‚ Ô‡ÏˇÚ¸ (1 ËÁ 3 ÂÊËÏÓ‚ DMA)
-  DMA_InitStructure.DMA_BufferSize = 6;                                 //ÒÍÓÎ¸ÍÓ ‰‡ÌÌ˚ı
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      // ¬ÒÂ ‚ÂÏˇ ËÁ ¿÷œ1
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;               // ËÌÍÂÏÂÌÚËÓ‚‡ÌËÂ ‡‰ÂÒ‡ Ô‡ÏˇÚË
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord; // 
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;   // ‡ÁÏÂ Í‡‰‡ ·ÛÙÂ‡ 16 ·ËÚ
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;                       // ÷ËÍÎË˜ÂÒÍËÈ ÂÊËÏ
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;                   // ¬˚ÒÓÍËÈ ÔËÓËÚÂÚ
-  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;                // Fifo ÌÂ ËÒÔÓÎ¸ÁÛÂÚÒˇ
-  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;     // ÓÚÌÓÒËÚÒˇ Í Fifo
-  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;           // ŒÚÌÓÓÒËÚÒˇ Í Ô‡ÍÂÚÌÓÈ ÓÚÒ˚ÎÍÂ
-  DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-  DMA_Init(DMA2_Stream0, &DMA_InitStructure);   //ÔÓ Ï‡ÌÛ‡ÎÛ ADC1 Í ÌÛÎÂ‚ÓÏÛ ÔÓÚÓÍÛ Í‡Ì‡ÎÛ DMA
+    DMA_InitStructure.DMA_Channel = DMA_Channel_0;                              //ADC1 –≤–∏—Å–∏—Ç –Ω–∞ –ø–µ—Ä–≤–æ–º –∫–∞–Ω–∞–ª–µ DMA
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;             //–æ—Ç–∫—É–¥–∞ –¥–∞–Ω–Ω—ã–µ
+    DMA_InitStructure.DMA_Memory0BaseAddr = (Uns)&g_RomData.AdcDataPointStruct; //–ö—É–¥–∞ –ø–∏—à–µ–º
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;                     //–ø–µ—Ä–µ–¥–∞—á–∞ —Å –ø–µ—Ä–µ—Ñ–µ—Ä–∏–∏ –≤ –ø–∞–º—è—Ç—å (1 –∏–∑ 3 —Ä–µ–∂–∏–º–æ–≤ DMA)
+    DMA_InitStructure.DMA_BufferSize = 6;                                       //—Å–∫–æ–ª—å–∫–æ –¥–∞–Ω–Ω—ã—Ö
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;            // –í—Å–µ –≤—Ä–µ–º—è –∏–∑ –ê–¶–ü1
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;                     // –∏–Ω–∫—Ä–µ–º–µ–Ω—Ç–∏—Ä–æ–≤–∞–Ω–∏–µ –∞–¥—Ä–µ—Å–∞ –ø–∞–º—è—Ç–∏
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord; //
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;         // —Ä–∞–∑–º–µ—Ä –∫–∞–¥—Ä–∞ –±—É—Ñ–µ—Ä–∞ 16 –±–∏—Ç
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;                             // –¶–∏–∫–ª–∏—á–µ—Å–∫–∏–π —Ä–µ–∂–∏–º
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;                         // –í—ã—Å–æ–∫–∏–π –ø—Ä–∏–æ—Ä–∏—Ç–µ—Ç
+    DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;                      // Fifo –Ω–µ –∏—Å–ø–æ–ª—å–∑—É–µ—Ç—Å—è
+    DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;           // –æ—Ç–Ω–æ—Å–∏—Ç—Å—è –∫ Fifo
+    DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;                 // –û—Ç–Ω–æ–æ—Å–∏—Ç—Å—è –∫ –ø–∞–∫–µ—Ç–Ω–æ–π –æ—Ç—Å—ã–ª–∫–µ
+    DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+    DMA_Init(DMA2_Stream0, &DMA_InitStructure); //–ø–æ –º–∞–Ω—É–∞–ª—É ADC1 –∫ –Ω—É–ª–µ–≤–æ–º—É –ø–æ—Ç–æ–∫—É –∫–∞–Ω–∞–ª—É DMA
 
-  // DMA2_Stream0 enable 
-  DMA_Cmd(DMA2_Stream0, ENABLE);
+    // DMA2_Stream0 enable
+    DMA_Cmd(DMA2_Stream0, ENABLE);
 }

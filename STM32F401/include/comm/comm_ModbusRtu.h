@@ -4,201 +4,205 @@
 #include "config.h"
 #include "comm_ModBusTimers.h"
 
-#define FR_SUCCESS                       0x00
-#define FR_ERR_BAD_PARAMS                0x0C
-#define FR_ERR_NOT_RESPOND               0x0E
-#define FR_ERR_FUNC_NOT_SUPPORTED        0x0F
-#define FR_ERR_CRC_FAILED                0x11
-#define FR_ERR_BAD_RESPONSE_LENGTH       0x12
-#define FR_ERR_BAD_RESPONSE_ADDRESS      0x13
-#define FR_ERR_BAD_RESPONSE_FUNC         0x14
-#define FR_ERR_BAD_DATA_LENGTH           0x15
-#define FR_ERR_BAD_DATA_ADDRESS          0x16
-#define FR_ERR_BAD_DATA_NUM              0x17
-#define FR_ERR_BAD_DATA_VALUE            0x18
-#define FR_ERR_BAD_EXCERTION_RESPONSE    0x19
+#define FR_SUCCESS 0x00
+#define FR_ERR_BAD_PARAMS 0x0C
+#define FR_ERR_NOT_RESPOND 0x0E
+#define FR_ERR_FUNC_NOT_SUPPORTED 0x0F
+#define FR_ERR_CRC_FAILED 0x11
+#define FR_ERR_BAD_RESPONSE_LENGTH 0x12
+#define FR_ERR_BAD_RESPONSE_ADDRESS 0x13
+#define FR_ERR_BAD_RESPONSE_FUNC 0x14
+#define FR_ERR_BAD_DATA_LENGTH 0x15
+#define FR_ERR_BAD_DATA_ADDRESS 0x16
+#define FR_ERR_BAD_DATA_NUM 0x17
+#define FR_ERR_BAD_DATA_VALUE 0x18
+#define FR_ERR_BAD_EXCERTION_RESPONSE 0x19
 
-#define EX_ILLEGAL_FUNCTION              0x01
-#define EX_ILLEGAL_DATA_ADDRESS          0x02
-#define EX_ILLEGAL_DATA_VALUE            0x03
-#define EX_SLAVE_DEVICE_FAILURE          0x04
-#define EX_ACKNOWLEDGE                   0x05
-#define EX_SLAVE_DEVICE_BUSY             0x06
-#define EX_NEGATIVE_ACKNOWLEDGE          0x07
-#define EX_MEMORY_PARITY_ERROR           0x08
+#define EX_ILLEGAL_FUNCTION 0x01
+#define EX_ILLEGAL_DATA_ADDRESS 0x02
+#define EX_ILLEGAL_DATA_VALUE 0x03
+#define EX_SLAVE_DEVICE_FAILURE 0x04
+#define EX_ACKNOWLEDGE 0x05
+#define EX_SLAVE_DEVICE_BUSY 0x06
+#define EX_NEGATIVE_ACKNOWLEDGE 0x07
+#define EX_MEMORY_PARITY_ERROR 0x08
 
-#define IsMaster()	(hPort->Params.Mode == MB_MASTER)
-#define IsSlave()	(hPort->Params.Mode == MB_SLAVE)
+#define IsMaster() (hPort->Params.Mode == MB_MASTER)
+#define IsSlave() (hPort->Params.Mode == MB_SLAVE)
 
-// Режимы работы
-#define MB_SLAVE             0        // Режим ведомого устройства
-#define MB_MASTER            1        // Режим ведущего устройства
+// Р РµР¶РёРјС‹ СЂР°Р±РѕС‚С‹
+
+#define MB_SLAVE 0  // Р РµР¶РёРј РІРµРґРѕРјРѕРіРѕ СѓСЃС‚СЂРѕР№СЃС‚РІР°
+#define MB_MASTER 1 // Р РµР¶РёРј РІРµРґСѓС‰РµРіРѕ СѓСЃС‚СЂРѕР№СЃС‚РІР°
 
 // serial_communication
-#define MB_SCALE			 (0.001 * Prd2kHZ)	// Масштабировка для связи по протоколу ModBus
+#define MB_SCALE (0.001 * Prd2kHZ) // РњР°СЃС€С‚Р°Р±РёСЂРѕРІРєР° РґР»СЏ СЃРІСЏР·Рё РїРѕ РїСЂРѕС‚РѕРєРѕР»Сѓ ModBus
 
-// Поддерживаемые функции
-#define MB_READ_REGS         0x03     // Чтение регистров хранения
-#define MB_READ_INPUT_REGS   0x04     // Чтение регистров ввода
-#define MB_WRITE_REG         0x06     // Запись регистра
-#define MB_DIAGNOSTICS       0x08     // Диагностика
-#define MB_WRITE_REGS        0x10     // Запись регистров
-#define MB_REPORT_ID         0x11     // Чтение идентификаторов устройства
+// РџРѕРґРґРµСЂР¶РёРІР°РµРјС‹Рµ С„СѓРЅРєС†РёРё Modbus
+#define MB_READ_REGS 0x03       // Р§С‚РµРЅРёРµ СЂРµРіРёСЃС‚СЂРѕРІ С…СЂР°РЅРµРЅРёСЏ
+#define MB_READ_INPUT_REGS 0x04 // Р§С‚РµРЅРёРµ СЂРµРіРёСЃС‚СЂРѕРІ РІРІРѕРґР°
+#define MB_WRITE_REG 0x06       // Р—Р°РїРёСЃСЊ СЂРµРіРёСЃС‚СЂР°
+#define MB_DIAGNOSTICS 0x08     // Р”РёР°РіРЅРѕСЃС‚РёРєР°
+#define MB_WRITE_REGS 0x10      // Р—Р°РїРёСЃСЊ СЂРµРіРёСЃС‚СЂРѕРІ
+#define MB_REPORT_ID 0x11       // Р§С‚РµРЅРёРµ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂРѕРІ СѓСЃС‚СЂРѕР№СЃС‚РІР°
 
-// Поддерживаемые подфункции для диагностики
-#define MB_RET_QUERY_DATA    0x0000   // Вернуть запрашиваемые данные
-#define MB_RESTART_COMM      0x0001   // Сброс коммуникации
-#define MB_RET_DIAGN_REG     0x0002   // Чтение регистра диагностики
-#define MB_FORCE_LISTEN      0x0004   // Переход в режим "Listen Mode Only"
-#define MB_CLEAR_DIAGN_REG   0x000A   // Сброс счетчиков и регистра диагностики
-#define MB_RET_BUS_MSG       0x000B   // Чтение счетчика сообщений
-#define MB_RET_BUS_ERR       0x000C   // Чтение счетчика ошибок связи (CRC)
-#define MB_RET_BUS_EXCEPT    0x000D   // Чтение счетчика исключений
-#define MB_RET_SLAVE_MSG     0x000E   // Чтение счетчика обработанных сообщений
-#define MB_RET_SLAVE_NO_RESP 0x000F   // Чтение счетчика неответов
-#define MB_RET_SLAVE_NAK     0x0010   // Чтение счетчика отрицательных подтверждений
-#define MB_RET_SLAVE_BUSY    0x0011   // Чтение счетчика занятости устройства
-#define MB_RET_BUS_OVERRUN   0x0012   // Чтение счетчика наложения данных
-#define MB_CLEAR_OVERRUN     0x0014   // Очистка счетчика наложения и флага ошибки
+// РџРѕРґРґРµСЂР¶РёРІР°РµРјС‹Рµ РїРѕРґС„СѓРЅРєС†РёРё РґР»СЏ РґРёР°РіРЅРѕСЃС‚РёРєРё
+#define MB_RET_QUERY_DATA 0x0000    // Р’РµСЂРЅСѓС‚СЊ Р·Р°РїСЂР°С€РёРІР°РµРјС‹Рµ РґР°РЅРЅС‹Рµ
+#define MB_RESTART_COMM 0x0001      // РЎР±СЂРѕСЃ РєРѕРјРјСѓРЅРёРєР°С†РёРё
+#define MB_RET_DIAGN_REG 0x0002     // Р§С‚РµРЅРёРµ СЂРµРіРёСЃС‚СЂР° РґРёР°РіРЅРѕСЃС‚РёРєРё
+#define MB_FORCE_LISTEN 0x0004      // РџРµСЂРµС…РѕРґ РІ СЂРµР¶РёРј "Listen Mode Only"
+#define MB_CLEAR_DIAGN_REG 0x000A   // РЎР±СЂРѕСЃ СЃС‡РµС‚С‡РёРєРѕРІ Рё СЂРµРіРёСЃС‚СЂР° РґРёР°РіРЅРѕСЃС‚РёРєРё
+#define MB_RET_BUS_MSG 0x000B       // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° СЃРѕРѕР±С‰РµРЅРёР№
+#define MB_RET_BUS_ERR 0x000C       // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РѕС€РёР±РѕРє СЃРІСЏР·Рё (CRC)
+#define MB_RET_BUS_EXCEPT 0x000D    // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РёСЃРєР»СЋС‡РµРЅРёР№
+#define MB_RET_SLAVE_MSG 0x000E     // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№
+#define MB_RET_SLAVE_NO_RESP 0x000F // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РЅРµРѕС‚РІРµС‚РѕРІ
+#define MB_RET_SLAVE_NAK 0x0010     // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹С… РїРѕРґС‚РІРµСЂР¶РґРµРЅРёР№
+#define MB_RET_SLAVE_BUSY 0x0011    // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° Р·Р°РЅСЏС‚РѕСЃС‚Рё СѓСЃС‚СЂРѕР№СЃС‚РІР°
+#define MB_RET_BUS_OVERRUN 0x0012   // Р§С‚РµРЅРёРµ СЃС‡РµС‚С‡РёРєР° РЅР°Р»РѕР¶РµРЅРёСЏ РґР°РЅРЅС‹С…
+#define MB_CLEAR_OVERRUN 0x0014     // РћС‡РёСЃС‚РєР° СЃС‡РµС‚С‡РёРєР° РЅР°Р»РѕР¶РµРЅРёСЏ Рё С„Р»Р°РіР° РѕС€РёР±РєРё
 
-// Структура параметров драйвера
+// РЎС‚СЂСѓРєС‚СѓСЂР° РїР°СЂР°РјРµС‚СЂРѕРІ РґСЂР°Р№РІРµСЂР°
 typedef void (*TMbTrFunc)(Byte);
 
-typedef struct _TMbParams {
-	Byte ChannelID;            // Идентификатор UART-порта
-	Byte Mode;                 // Режим работы   (Master/Slave)
-	Byte Slave;                // Адрес подчиненного устройства
-	Uns  BaudRate;             // Скорость обмена
-	Uns  UartBaud;             // Расчитанная скорость для UART
-	Byte Parity;               // Режим паритета
-	Byte RetryCount;           // Количество повторов передач (в режиме MASTER)
-	Uns ModbusTimFriq;        // Частота вызова таймингов
-	Uns  RxDelay;              // Задержка при приеме кадров (в тактах)
-	Uns  TxDelay;              // Задержка при передаче кадров (в мсек)
-	Uns  ConnTimeout;          // Тайм-аут определения связи (в мсек)
-	Uns  AckTimeout;           // Тайм-аут подтверждения (в мсек)
-	TMbTrFunc TrEnable;   	   // Функция разрешения передачи
-	Uns  HardWareType;	   // тип аппаратного канала передачи данных
+typedef struct _TMbParams
+{
+    Byte ChannelID;     // РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ UART-РІС‹С…РѕРґР°
+    Byte Mode;          // Р РµР¶РёРј СЂР°Р±РѕС‚С‹ (Master/Slave)
+    Byte Slave;         // РђРґСЂРµСЃ РїРѕРґС‡РёРЅРµРЅРЅРѕРіРѕ СѓСЃС‚СЂРѕР№СЃС‚РІР°
+    Uns BaudRate;       // РЎРєРѕСЂРѕСЃС‚СЊ РѕР±РјРµРЅР°
+    Uns UartBaud;       // Р Р°СЃС‡РёС‚Р°РЅРЅР°СЏ СЃРєРѕСЂРѕСЃС‚СЊ РґР»СЏ UART
+    Byte Parity;        // Р РµР¶РёРј РїР°СЂРёС‚РµС‚Р°
+    Byte RetryCount;    // РљРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРІС‚РѕСЂРѕРІ РїРµСЂРµРґР°С‡ (РІ СЂРµР¶РёРјРµ MASTER)
+    Uns ModbusTimFriq;  // Р§Р°СЃС‚РѕС‚Р° РІС‹Р·РѕРІР° С‚Р°Р№РјРёРЅРіРѕРІ
+    Uns RxDelay;        // Р—Р°РґРµСЂР¶РєР° РїСЂРё РїСЂРёРµРјРµ РєР°РґСЂРѕРІ (РІ С‚Р°РєС‚Р°С…)
+    Uns TxDelay;        // Р—Р°РґРµСЂР¶РєР° РїСЂРё РїРµСЂРµРґР°С‡Рµ РєР°РґСЂРѕРІ (РІ РјСЃРµРє)
+    Uns ConnTimeout;    // РўР°Р№Рј-Р°СѓС‚ РѕРїСЂРµРґРµР»РµРЅРёСЏ СЃРІСЏР·Рё (РІ РјСЃРµРє)
+    Uns AckTimeout;     // РўР°Р№Рј-Р°СѓС‚ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ (РІ РјСЃРµРє)
+    TMbTrFunc TrEnable; // Р¤СѓРЅРєС†РёСЏ СЂР°Р·СЂРµС€РµРЅРёСЏ РїРµСЂРµРґР°С‡Рё
+    Uns HardWareType;   // РўРёРї Р°РїРїР°СЂР°С‚РЅРѕРіРѕ РєР°РЅР°Р»Р° РїРµСЂРµРґР°С‡Рё РґР°РЅРЅС‹С…
 } TMbParams;
 
-// Структра пакета данных
-typedef struct _TMbPacket {
-	Byte Request;              // Код функции запроса
-	Byte Response;             // Код функции ответа
-	Uns  SubRequest;           // Код подфункции запроса
-	Uns  Addr;                 // Начальный адрес данных
-	Uns  Data[100];            // Буфер данных
-	Uns  Count;                // Количество данных
-	Byte Exception;            // Код исключения (ошибки)
-	Bool Acknoledge;           // Флаг ожидания подтверждения
-	Byte ParamMode;	           // режим Modbus / Bluetooth
+// РЎС‚СЂСѓРєС‚СЂР° РїР°РєРµС‚Р° РґР°РЅРЅС‹С…
+typedef struct _TMbPacket
+{
+    Byte Request;    // РљРѕРґ С„СѓРЅРєС†РёРё Р·Р°РїСЂРѕСЃР°
+    Byte Response;   // РљРѕРґ С„СѓРЅРєС†РёРё РѕС‚РІРµС‚Р°
+    Uns SubRequest;  // РљРѕРґ РїРѕРґС„СѓРЅРєС†РёРё Р·Р°РїСЂРѕСЃР°
+    Uns Addr;        // РќР°С‡Р°Р»СЊРЅС‹Р№ Р°РґСЂРµСЃ РґР°РЅРЅС‹С…
+    Uns Data[100];   // Р‘СѓС„РµСЂ РґР°РЅРЅС‹С…
+    Uns Count;       // РљРѕР»РёС‡РµСЃС‚РІРѕ РґР°РЅРЅС‹С…
+    Byte Exception;  // РљРѕРґ РёСЃРєР»СЋС‡РµРЅРёСЏ (РѕС€РёР±РєРё)
+    Bool Acknoledge; // Р¤Р»Р°Рі РѕР¶РёРґР°РЅРёСЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ
+    Byte ParamMode;  // Р РµР¶РёРј Modbus / Bluetooth
 } TMbPacket;
 
-// Структура кадра
-typedef struct _TMbFrame {
-	Bool       ListenMode;     // Признак нахождения в режиме "Listen Mode Only"
-	Uns       RetryCounter;   // Количество повторов передач (в режиме MASTER)
-	Bool       WaitResponse;   // Флаг ожидания ответа (в режиме MASTER)
-	Bool       NewMessage;     // Флаг приема нового кадра
-	TTimerList Timer1_5;       // Таймер для 1.5 символа
-	TTimerList Timer3_5;       // Таймер для 3.5 символа
-	TTimerList TimerPre;       // Таймер для преамбулы
-	TTimerList TimerPost;      // Таймер для постамбулы
-	TTimerList TimerConn;      // Таймер для определения наличия связи
-	TTimerList TimerAsk;       // Таймер для для потверждения
-	Uns        RxLength;       // Длина принятого кадра
-	Uns        TxLength;       // Длина передаваемого кадра
-	Uns 	   AddCount;
-	Byte      *Data;           // Указатель в буфере данных кадара
-	Byte       Buf[256];       // Буфер данных кадра
+// РЎС‚СЂСѓРєС‚СѓСЂР° РєР°РґСЂР°
+typedef struct _TMbFrame
+{
+    Bool ListenMode;      // Р¤Р»Р°Рі СЂРµР¶РёРјР° "Listen Only"
+    Uns RetryCounter;     // РљРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРІС‚РѕСЂРѕРІ РїРµСЂРµРґР°С‡ (РІ СЂРµР¶РёРјРµ MASTER)
+    Bool WaitResponse;    // Р¤Р»Р°Рі РѕР¶РёРґР°РЅРёСЏ РѕС‚РІРµС‚Р° (РІ СЂРµР¶РёРјРµ MASTER)
+    Bool NewMessage;      // Р¤Р»Р°Рі РїСЂРёРµРјР° РЅРѕРІРѕРіРѕ РєР°РґСЂР°
+    TTimerList Timer1_5;  // РўР°Р№РјРµСЂ РґР»СЏ 1.5 СЃРёРјРІРѕР»Р°
+    TTimerList Timer3_5;  // РўР°Р№РјРµСЂ РґР»СЏ 3.5 СЃРёРјРІРѕР»Р°
+    TTimerList TimerPre;  // РўР°Р№РјРµСЂ РґР»СЏ РїСЂРµР°РјР±СѓР»С‹
+    TTimerList TimerPost; // РўР°Р№РјРµСЂ РґР»СЏ РїРѕСЃС‚Р°РјР±СѓР»С‹
+    TTimerList TimerConn; // РўР°Р№РјРµСЂ РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РЅР°Р»РёС‡РёСЏ СЃРІСЏР·Рё
+    TTimerList TimerAsk;  // РўР°Р№РјРµСЂ РґР»СЏ РґР»СЏ РїРѕС‚РІРµСЂР¶РґРµРЅРёСЏ
+    Uns RxLength;         // Р”Р»РёРЅР° РїСЂРёРЅСЏС‚РѕРіРѕ РєР°РґСЂР°
+    Uns TxLength;         // Р”Р»РёРЅР° РїРµСЂРµРґР°РІР°РµРјРѕРіРѕ РєР°РґСЂР°
+    Byte *Data;           // РЈРєР°Р·Р°С‚РµР»СЊ РІ Р±СѓС„РµСЂРµ РґР°РЅРЅС‹С… РєР°РґР°СЂР°
+    Byte Buf[256];        // Р‘СѓС„РµСЂ РґР°РЅРЅС‹С… РєР°РґСЂР°
 } TMbFrame;
 
-
+// РЎРѕСЃС‚РѕСЏРЅРёРµ РїРѕСЂС‚Р°
 typedef union {
-  Uint16 all;
-  struct {
-    Uint16 Busy:1;		// 0 - занят идет выполнение последней соманды
-    Uint16 Ready:1;		// 1 - готов команда выполнена
-    Uint16 Wait:1;		// 2 - ожидание команды
-    Uint16 NoConnect:1;         // 3 - нет связи
-    Uint16 Error:1;		// 4 - ошибка при выполнении команды
-    Uint16 Rsvd:11;		// 5-15
-  } bit;
+    Uint16 all;
+    struct
+    {
+        Uint16 Busy : 1;      // 0 - Р·Р°РЅСЏС‚ РёРґРµС‚ РІС‹РїРѕР»РЅРµРЅРёРµ РїРѕСЃР»РµРґРЅРµР№ СЃРѕРјР°РЅРґС‹
+        Uint16 Ready : 1;     // 1 - РіРѕС‚РѕРІ РєРѕРјР°РЅРґР° РІС‹РїРѕР»РЅРµРЅР°
+        Uint16 Wait : 1;      // 2 - РѕР¶РёРґР°РЅРёРµ РєРѕРјР°РЅРґС‹
+        Uint16 NoConnect : 1; // 3 - РЅРµС‚ СЃРІСЏР·Рё
+        Uint16 Error : 1;     // 4 - РѕС€РёР±РєР° РїСЂРё РІС‹РїРѕР»РЅРµРЅРёРё РєРѕРјР°РЅРґС‹
+        Uint16 Rsvd : 11;     // 5-15
+    } bit;
 } TATS48_mbStatus;
 
-// Режим связи
-typedef enum {
-  pmNone = 0,				// Нет проверки бита четности, 2 стоповых бита
-  pmOdd  = 1,				// Проверка на нечетность, 1 стоповый бит
-  pmEven = 2				// Проверка на четность, 1 стоповый бит
-}TParityMode;
+// Р РµР¶РёРј СЃРІСЏР·Рё
+typedef enum
+{
+    pmNone = 0, // РќРµС‚ РїСЂРѕРІРµСЂРєРё Р±РёС‚Р° С‡РµС‚РЅРѕСЃС‚Рё, 2 СЃС‚РѕРїРѕРІС‹С… Р±РёС‚Р°
+    pmOdd = 1,  // РџСЂРѕРІРµСЂРєР° РЅР° РЅРµС‡РµС‚РЅРѕСЃС‚СЊ, 1 СЃС‚РѕРїРѕРІС‹Р№ Р±РёС‚
+    pmEven = 2  // РџСЂРѕРІРµСЂРєР° РЅР° С‡РµС‚РЅРѕСЃС‚СЊ, 1 СЃС‚РѕРїРѕРІС‹Р№ Р±РёС‚
+} TParityMode;
 
-// Скорость связи ModBus
-typedef enum {
-  br2400   = 0,			// 2400 Бод
-  br4800   = 1,			// 4800 Бод
-  br9600   = 2,			// 9600 Бод
-  br19200  = 3,			// 19200 Бод
-  br38400  = 4,			// 38400 Бод
-  br57600  = 5,			// 57600 Бод
-  br115200 = 6			// 115200 Бод
-}TBaudRate;
+// РЎРєРѕСЂРѕСЃС‚СЊ СЃРІСЏР·Рё ModBus
+typedef enum
+{
+    br2400 = 0,  // 2400 baud
+    br4800 = 1,  // 4800 baud
+    br9600 = 2,  // 9600 baud
+    br19200 = 3, // 19200 baud
+    br38400 = 4, // 38400 baud
+    br57600 = 5, // 57600 baud
+    br115200 = 6 // 115200 baud
+} TBaudRate;
 
-
-// Струкутра статистики работы
-typedef struct _TMbStat {
-	Uns DiagnReg;              // Регистр диагностики
-	Uns BusMsgCount;           // Счетчик сообщений
-	Uns BusErrCount;           // Счетчик ошибок связи
-	Uns SyncTxErrCount;	   // Счетчик ошибок связи на приём
-	Uns SyncRxErrCount;	   // Счетчик ошибок связи на передачу
-	Uns BusExcCount;           // Счетчик исключений
-	Uns SlaveMsgCount;         // Счетчик обработанных сообщений
-	Uns SlaveNoRespCount;      // Счетчик неответов
-	Uns SlaveNakCount;         // Счетчик отрицательных подтверждений
-	Uns SlaveBusyCount;        // Счетчик занятости устройства
-	Uns BusParityErrCount;	   // Счетчик ошибок бита паритета
-	Uns BusOverrunErrCount;    // Счетчик наложения данных
-	Uns BusFrameErrCount;	   // Счетчик ошибок отсутствия стопового бита
-	Uns BusFrameLenErrCount;   // Счетчик ошибок приема слишком коротких кадров
-	Uns BusFrameCrcErrCount;   // Счетчик ошибок CRC кадра
-	Uns TxMsgCount;            // Счетчик переданных сообщений
-	Uns RxBytesCount;          // Принятое количество байт
-	Uns TxBytesCount;          // Отправление количество байт
-	Uns MAMsgIn;
-	Uns MAMsgOut;
-	TATS48_mbStatus Status;	   // статус выполнения команды
+// РЎС‚СЂСѓРєСѓС‚СЂР° СЃС‚Р°С‚РёСЃС‚РёРєРё СЂР°Р±РѕС‚С‹
+typedef struct _TMbStat
+{
+    Uns DiagnReg;            // Р РµРіРёСЃС‚СЂ РґРёР°РіРЅРѕСЃС‚РёРєРё
+    Uns BusMsgCount;         // РЎС‡РµС‚С‡РёРє СЃРѕРѕР±С‰РµРЅРёР№
+    Uns BusErrCount;         // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє СЃРІСЏР·Рё
+    Uns SyncTxErrCount;      // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє СЃРІСЏР·Рё РЅР° РїСЂРёС‘Рј
+    Uns SyncRxErrCount;      // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє СЃРІСЏР·Рё РЅР° РїРµСЂРµРґР°С‡Сѓ
+    Uns BusExcCount;         // РЎС‡РµС‚С‡РёРє РёСЃРєР»СЋС‡РµРЅРёР№
+    Uns SlaveMsgCount;       // РЎС‡РµС‚С‡РёРє РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№
+    Uns SlaveNoRespCount;    // РЎС‡РµС‚С‡РёРє РЅРµРѕС‚РІРµС‚РѕРІ
+    Uns SlaveNakCount;       // РЎС‡РµС‚С‡РёРє РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹С… РїРѕРґС‚РІРµСЂР¶РґРµРЅРёР№
+    Uns SlaveBusyCount;      // РЎС‡РµС‚С‡РёРє Р·Р°РЅСЏС‚РѕСЃС‚Рё СѓСЃС‚СЂРѕР№СЃС‚РІР°
+    Uns BusParityErrCount;   // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє Р±РёС‚Р° РїР°СЂРёС‚РµС‚Р°
+    Uns BusOverrunErrCount;  // РЎС‡РµС‚С‡РёРє РЅР°Р»РѕР¶РµРЅРёСЏ РґР°РЅРЅС‹С…
+    Uns BusFrameErrCount;    // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє РѕС‚СЃСѓС‚СЃС‚РІРёСЏ СЃС‚РѕРїРѕРІРѕРіРѕ Р±РёС‚Р°
+    Uns BusFrameLenErrCount; // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє РїСЂРёРµРјР° СЃР»РёС€РєРѕРј РєРѕСЂРѕС‚РєРёС… РєР°РґСЂРѕРІ
+    Uns BusFrameCrcErrCount; // РЎС‡РµС‚С‡РёРє РѕС€РёР±РѕРє CRC РєР°РґСЂР°
+    Uns TxMsgCount;          // РЎС‡РµС‚С‡РёРє РїРµСЂРµРґР°РЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№
+    Uns RxBytesCount;        // РџСЂРёРЅСЏС‚РѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚
+    Uns TxBytesCount;        // РћС‚РїСЂР°РІР»РµРЅРёРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚
+    Uns MAMsgIn;
+    Uns MAMsgOut;
+    TATS48_mbStatus Status;  // РЎС‚Р°С‚СѓСЃ РІС‹РїРѕР»РЅРµРЅРёСЏ РєРѕРјР°РЅРґС‹
 } TMbStat;
 
-
+// РЎС‚СЂСѓРєС‚СѓСЂР° РїР°РєРµС‚Р° Modbus
 typedef struct _TSerialInterface
 {
-	Uns            RsState;             // 0.Состояние связи
-	TBaudRate      RsBaudRate;          // 1.Скорость связи
-	Uns            RsStation;           // 2.Адрес станции
-	TParityMode    RsMode;              // 3.Режим связи
-	Uns            RsReset;             // 4.Сброс связи
-	Uns            RsRxErrors;          // 6.Количество ошибок приема
-	Uns            RsIndicTime;         // 7.Время определения связи
-	Uns            RsWaitTime;          // 8.Время ожидания передачи
-	Uns            Rsvd1;               // 9.Резерв
-	Uns            PduRead;             // 10.Чтение данных в память ПДУ
-	Uns            PduWrite;            // 11.Запись данных из памяти ПДУ
+    Uns RsState;          // 0. РЎРѕСЃС‚РѕСЏРЅРёРµ СЃРІСЏР·Рё
+    TBaudRate RsBaudRate; // 1. РЎРєРѕСЂРѕСЃС‚СЊ СЃРІСЏР·Рё
+    Uns RsStation;        // 2. РђРґСЂРµСЃ СЃС‚Р°РЅС†РёРё
+    TParityMode RsMode;   // 3. Р РµР¶РёРј СЃРІСЏР·Рё
+    Uns RsReset;          // 4. РЎР±СЂРѕСЃ СЃРІСЏР·Рё
+    Uns RsRxErrors;       // 6. РљРѕР»РёС‡РµСЃС‚РІРѕ РѕС€РёР±РѕРє РїСЂРёРµРјР°
+    Uns RsIndicTime;      // 7. Р’СЂРµРјСЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ СЃРІСЏР·Рё
+    Uns RsWaitTime;       // 8. Р’СЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ РїРµСЂРµРґР°С‡Рё
+    Uns Rsvd1;            // 9. Р РµР·РµСЂРІ
+    Uns PduRead;          // 10. Р§С‚РµРЅРёРµ РґР°РЅРЅС‹С… РІ РїР°РјСЏС‚СЊ РџР”РЈ
+    Uns PduWrite;         // 11. Р—Р°РїРёСЃСЊ РґР°РЅРЅС‹С… РёР· РїР°РјСЏС‚Рё РџР”РЈ
 } TSerialInterface;
 
+// РЎС‚СЂСѓРєС‚СѓСЂР° РѕР±СЉРµРєС‚Р° РґСЂР°Р№РІРµСЂР°
+typedef struct _TMbPort
+{
+    TMbParams Params;        // РџР°СЂР°РјРµС‚СЂС‹ РґСЂР°Р№РІРµСЂР°
+    TMbPacket Packet;        // РџР°РєРµС‚ РґР°РЅРЅС‹С…
+    TMbFrame Frame;          // РЎС‚СЂСѓРєС‚СѓСЂР° РєР°РґСЂР°
+    TMbStat Stat;            // РЎС‚Р°С‚РёСЃС‚РёРєР° СЂР°Р±РѕС‚С‹
+    TSerialInterface Serial; // РџРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅС‹Р№ РёРЅС‚РµСЂС„РµР№СЃ
+} TMbPort, *TMbHandle;
 
-// Структура объекта драйвера
-typedef struct _TMbPort {
-  TMbParams Params;          // Параметры драйвера
-  TMbPacket Packet;          // Пакет данных
-  TMbFrame  Frame;           // Структура кадра
-  TMbStat   Stat;            // Статистика работы
-  TSerialInterface Serial;   // Послед. интерфейс
-} TMbPort,*TMbHandle;
-
-
-
-//Прототипы
+// РџСЂРѕС‚РѕС‚РёРїС‹ Modbus РєРѕРјРјСѓРЅРёРєР°С†РёРё
 void ModbusInit(TMbHandle);
 void ModbusInvoke(TMbHandle);
 void ModbusTimings(TMbHandle);
@@ -206,11 +210,8 @@ void ModbusTimings(TMbHandle);
 void ModbusRx(TMbHandle);
 void ModbusTx(TMbHandle);
 
-
-
-// Прототипы comm_ModbusCrc.h 
+// РџСЂРѕС‚РѕС‚РёРїС‹ comm_ModbusCrc.h
 __inline void GenerateCrcTable(void);
 __inline Uns CalcFrameCrc(Byte *Buf, Uns Count);
-
 
 #endif

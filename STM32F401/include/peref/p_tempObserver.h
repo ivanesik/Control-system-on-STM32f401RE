@@ -12,7 +12,4 @@
 
 void TempObserverUpdate (void);
 
-
-
-
 #endif

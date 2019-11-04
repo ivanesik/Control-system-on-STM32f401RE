@@ -1,4 +1,3 @@
-
 #ifndef __MODBUS_EVENT_H
 #define __MODBUS_EVENT_H
 
@@ -6,111 +5,87 @@
 #include "comm_ModbusFrame.h"
 #include "comm_ModbusTimers.h"
 
-
-//--Timer1_5----при приеме что между принятыми байтами не более 1.5------------------------------------------------------
-__inline void BreakFrameEvent(TMbPort *hPort) 
+//--Timer1_5----РџСЂРё РїСЂРёРµРјРµ С‡С‚Рѕ РјРµР¶РґСѓ РїСЂРёРЅСЏС‚С‹РјРё Р±Р°Р№С‚Р°РјРё РЅРµ Р±РѕР»РµРµ 1.5------------------------------------------------------
+__inline void BreakFrameEvent(TMbPort *hPort)
 {
- // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
- // USART_ITConfig(USART2, USART_IT_TC, DISABLE);
-  
-  StopMbTimer(&hPort->Frame.TimerAsk);
+    // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    // USART_ITConfig(USART2, USART_IT_TC, DISABLE);
+
+    StopMbTimer(&hPort->Frame.TimerAsk);
 }
 
-
-//-Timer3_5----при приеме если прошло 3.5 значит пришел полный пакет данных, начинается обработка--
+//-Timer3_5----РџСЂРё РїСЂРёРµРјРµ РµСЃР»Рё РїСЂРѕС€Р»Рѕ 3.5 Р·РЅР°С‡РёС‚ РїСЂРёС€РµР» РїРѕР»РЅС‹Р№ РїР°РєРµС‚ РґР°РЅРЅС‹С…, РЅР°С‡РёРЅР°РµС‚СЃСЏ РѕР±СЂР°Р±РѕС‚РєР°--
 __inline void NewFrameEvent(TMbPort *hPort)
 {
-  hPort->Frame.NewMessage = true;
-  hPort->Frame.WaitResponse = false;
-  hPort->Frame.RxLength   = hPort->Frame.Data - hPort->Frame.Buf;//длинна принятого сообщения
-  hPort->Frame.Data       = hPort->Frame.Buf; // Сброс указателя буфера в начало
-  
-//  USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
-//  USART_ITConfig(USART2, USART_IT_TC, DISABLE);
-  
-  StartMbTimer(&hPort->Frame.TimerPre);
+    hPort->Frame.NewMessage = true;
+    hPort->Frame.WaitResponse = false;
+    hPort->Frame.RxLength = hPort->Frame.Data - hPort->Frame.Buf; //пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    hPort->Frame.Data = hPort->Frame.Buf;                         // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+
+    //  USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    //  USART_ITConfig(USART2, USART_IT_TC, DISABLE);
+
+    StartMbTimer(&hPort->Frame.TimerPre);
 }
 
-
-//--по окончанию преамбулы начинается передача запроса (далее по прерыванию)-------------------------------------------
+//--РџРѕ РѕРєРѕРЅС‡Р°РЅРёСЋ РїСЂРµР°РјР±СѓР»С‹ РЅР°С‡РёРЅР°РµС‚СЃСЏ РїРµСЂРµРґР°С‡Р° Р·Р°РїСЂРѕСЃР° (РґР°Р»РµРµ РїРѕ РїСЂРµСЂС‹РІР°РЅРёСЋ)-------------------------------------------
 __inline void PreambleEvent(TMbPort *hPort)
 {
-  hPort->Frame.Data = hPort->Frame.Buf;
-  
- // USART_ITConfig(USART2, USART_IT_TC, ENABLE);
- // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    hPort->Frame.Data = hPort->Frame.Buf;
 
-  GPIO_SetBits(GPIOA,GPIO_Pin_1);
-  
-  USART_SendData(USART2, (uint8_t) *hPort->Frame.Data++);
+    // USART_ITConfig(USART2, USART_IT_TC, ENABLE);
+    // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+
+    GPIO_SetBits(GPIOA, GPIO_Pin_1);
+
+    USART_SendData(USART2, (uint8_t)*hPort->Frame.Data++);
 }
 
-
-// После передачи последнего байта пакета------------------------------------------
+// РџРѕСЃР»Рµ РїРµСЂРµРґР°С‡Рё РїРѕСЃР»РµРґРЅРµРіРѕ Р±Р°Р№С‚Р° РїР°РєРµС‚Р°------------------------------------------
 __inline void PostambleEvent(TMbPort *hPort)
 {
-  hPort->Frame.Data = hPort->Frame.Buf;  //сброс указателя на начало отправляемого буфера
+    hPort->Frame.Data = hPort->Frame.Buf; // РЎР±СЂРѕСЃ СѓРєР°Р·Р°С‚РµР»СЏ РЅР° РЅР°С‡Р°Р»Рѕ РѕС‚РїСЂР°РІР»СЏРµРјРѕРіРѕ Р±СѓС„РµСЂР°
 
- // USART_ITConfig(USART2, USART_IT_TC, DISABLE); // начинаем слушать
- // USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); // перестаем передавать
-  GPIO_ResetBits(GPIOA,GPIO_Pin_1);             // сброс бита отправки (аппаратный)
-  
-  hPort->Frame.WaitResponse = true;
-  
-  StartMbTimer(&hPort->Frame.TimerAsk);
+    // USART_ITConfig(USART2, USART_IT_TC, DISABLE); // РЅР°С‡РёРЅР°РµРј СЃР»СѓС€Р°С‚СЊ
+    // USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); // РїРµСЂРµСЃС‚Р°РµРј РїРµСЂРµРґР°РІР°С‚СЊ
+    GPIO_ResetBits(GPIOA, GPIO_Pin_1); // РЎР±СЂРѕСЃ Р±РёС‚Р° РѕС‚РїСЂР°РІРєРё (Р°РїРїР°СЂР°С‚РЅС‹Р№)
+
+    hPort->Frame.WaitResponse = true;
+
+    StartMbTimer(&hPort->Frame.TimerAsk);
 }
-
-
 
 //-------------------------------------------------------------------------------
 __inline void NoAskEvent(TMbPort *hPort)
-{    
- // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
- // USART_ITConfig(USART2, USART_IT_TC, DISABLE);
-     
-  if (hPort->Stat.SlaveNoRespCount<65500)
-    hPort->Stat.SlaveNoRespCount++;// Счетчик неответов
-     
-  if (hPort->Frame.RetryCounter<65500) 
-    hPort->Frame.RetryCounter++;
-    
-  hPort->Frame.WaitResponse = false; //по этому флагу в главном цикле начинает заново опрашивать
-  hPort->Stat.Status.bit.Error = 1;
-  
-  StartMbTimer(&hPort->Frame.TimerPre);
+{
+    // USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    // USART_ITConfig(USART2, USART_IT_TC, DISABLE);
+
+    if (hPort->Stat.SlaveNoRespCount < 65500)
+        hPort->Stat.SlaveNoRespCount++; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+
+    if (hPort->Frame.RetryCounter < 65500)
+        hPort->Frame.RetryCounter++;
+
+    hPort->Frame.WaitResponse = false; //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    hPort->Stat.Status.bit.Error = 1;
+
+    StartMbTimer(&hPort->Frame.TimerPre);
 }
-
-
-
-
 
 //------------------------------------------------------------------------
 //-------------------------------------------------------------------------------
 static void SendFrame(TMbPort *hPort)
 {
-  CrcPack(hPort);
+    CrcPack(hPort);
 
-//  USART_ITConfig(USART2, USART_IT_TC, ENABLE);
-//  USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
-//  GPIO_SetBits(GPIOA,GPIO_Pin_1);
-  hPort->Frame.WaitResponse = true;
+    //  USART_ITConfig(USART2, USART_IT_TC, ENABLE);
+    //  USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    //  GPIO_SetBits(GPIOA,GPIO_Pin_1);
+    hPort->Frame.WaitResponse = true;
 
-  StartMbTimer(&hPort->Frame.TimerPre);
-  hPort->Stat.TxMsgCount++;
+    StartMbTimer(&hPort->Frame.TimerPre);
+    hPort->Stat.TxMsgCount++;
 }
-
-
-
-/*
-//-------------------------------------------------------------------------------
-static void SendMasterResponse(TMbPort *hPort)
-{
-	hPort->Packet.Response    = hPort->Packet.Request;
-	hPort->Packet.Request     = 0;
-	hPort->Frame.RetryCounter = 0;
-	hPort->Frame.WaitResponse = false;
-}
-
-*/
 
 #endif

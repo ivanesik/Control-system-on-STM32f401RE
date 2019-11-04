@@ -3,16 +3,13 @@
 
 TComm g_Comm;
 
-
 void Comm_Init(TComm *p)
 {
-  InitDVibrChanelModbus(&g_Comm.mbDVibr);//заполнение структур параметров
-  SerialCommInit(&g_Comm.mbDVibr);//InitModbus настройка модбаса и таймингов
+    InitDVibrChanelModbus(&g_Comm.mbDVibr);// Р—Р°РїРѕР»РЅРµРЅРёРµ СЃС‚СЂСѓРєС‚СѓСЂС‹ РїР°СЂР°РјРµС‚СЂРѕРІ
+    SerialCommInit(&g_Comm.mbDVibr); // InitModbus РЅР°СЃС‚СЂРѕР№РєР° РјРѕРґР±Р°СЃР° Рё С‚Р°Р№РјРёРЅРіРѕРІ
 }
-
-
 
 void Comm_Update(TComm *p)
 {
-  ModbusUpdate(&g_Comm.mbDVibr);
+    ModbusUpdate(&g_Comm.mbDVibr);
 }

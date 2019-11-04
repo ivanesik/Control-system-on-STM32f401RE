@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "comm_modbusrtu.h": "c",
+        "g_interruptupdate.h": "c"
+    }
+}

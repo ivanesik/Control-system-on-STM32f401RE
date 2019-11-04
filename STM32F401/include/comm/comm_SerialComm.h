@@ -3,43 +3,36 @@
 
 #include "comm_ModbusRtu.h"
 
+#define SPI_FRAME_BUF_SIZE 12 // Р Р°Р·РјРµСЂ РјР°СЃСЃРёРІР° Р±СѓС„РµСЂР° РїРѕСЃС‹Р»РєРё
 
-#define SPI_FRAME_BUF_SIZE	12	 // Размер массива буфера посылки
+#define SPI_SLAVE_IN_CHECK 0x55  // РџСЂРѕРІРµСЂРѕС‡РЅС‹Р№ СЃРёРјРІРѕР», РєРѕС‚РѕСЂС‹Р№ РїСЂРёС…РѕРґРёС‚ СЃ DSP
+#define SPI_SLAVE_OUT_CHECK 0xAA // РџСЂРѕРІРµСЂРѕС‡РЅС‹Р№ СЃРёРјРІРѕР», РєРѕС‚РѕСЂС‹Р№ РѕС‚РїСЂР°РІР»СЏРµС‚ РЅР° DSP
 
-#define SPI_SLAVE_IN_CHECK      0x55     // Проверочный символ, который приходит с DSP
-#define SPI_SLAVE_OUT_CHECK     0xAA	 // Проверочный символ, который отправляет на DSP
+typedef struct _TPpData
 
+    Uns X_VibrData; // РґР°РЅРЅС‹Рµ РІРёР±СЂРѕСЃРєРѕСЂРѕСЃС‚Рё СЃ РґР°С‚С‡РёРєР° РїРѕ РѕСЃРё X
+    Uns Y_VibrData; // РґР°РЅРЅС‹Рµ РІРёР±СЂРѕСЃРєРѕСЂРѕСЃС‚Рё СЃ РґР°С‚С‡РёРєР° РїРѕ РѕСЃРё Y
+    Uns Z_VibrData; // РґР°РЅРЅС‹Рµ РІРёР±СЂРѕСЃРєРѕСЂРѕСЃС‚Рё СЃ РґР°С‚С‡РёРєР° РїРѕ РѕСЃРё Z
+    Uns Temp_P2;    // РўРµРјРїРµСЂР°С‚СѓСЂР° РїРѕРґС€РёРїРЅРёРєР° 2
+    Uns Temp_T;     // РўРµРјРїРµСЂР°С‚СѓСЂР° СѓРїР»РѕС‚РЅРёС‚РµР»СЏ
+    Uns Temp_ED1;   // РўРµРјРїРµСЂР°С‚СѓСЂР° СЌР»РµРєС‚СЂРѕРґРІРёРіР°С‚РµР»СЏ
+    Uns Temp_P1;    // РўРµРјРїРµСЂР°С‚СѓСЂР° РїРѕРґС€РёРїРЅРёРєР° 1
 
+    GPIO_StateUnion Discr_State_In;   // РЎРёРіРЅР°Р»С‹ РёР· РђРЎРЈ РЅР° РґРёСЃРєСЂРµС‚РЅС‹С… РІС…РѕРґР°С…
+    GPIO_AsuStateUnion Discr_ASU_In;  // РћСЃС‚Р°Р»СЊРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ РґРёСЃРєСЂРµС‚РЅС‹С… РІС…РѕРґРѕРІ (РІС‹С…РѕРґРѕРІ)
+    GPIO_StateUnion Discr_State_Out;  // РЎРёРіРЅР°Р»С‹ РёР· РђРЎРЈ РЅР° РґРёСЃРєСЂРµС‚РЅС‹С… РІС…РѕРґР°С…
+    GPIO_AsuStateUnion Discr_ASU_Out; // РћСЃС‚Р°Р»СЊРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ РґРёСЃРєСЂРµС‚РЅС‹С… РІС…РѕРґРѕРІ (РІС‹С…РѕРґРѕРІ)
 
+    AdcChannelStateStructure AdcState; // РЎРѕСЃС‚РѕСЏРЅРёРµ РєР°РЅР°Р»РѕРІ РђР¦Рџ
+    Byte DvibrErr;                     // РћС€РёР±РєР° РґР°С‚С‡РёРєР° РІРёР±СЂР°С†РёРё (РѕС€РёР±РєРё ModBus)
 
+    Byte *Data;                       // РЈРєР°Р·Р°С‚РµР»СЊ РЅР° СЌР»РµРјРµРЅС‚ Р±СѓС„РµСЂР°
+    Uns RxLength;                     // Р”Р»РёРЅР° РїСЂРёРЅСЏС‚РѕРіРѕ РєР°РґСЂР°
+    Uns TxLength;                     // Р”Р»РёРЅР° РїРµСЂРµРґР°РІР°РµРјРѕРіРѕ РєР°РґСЂР°
+    Byte RxFrame[SPI_FRAME_BUF_SIZE]; // Р‘СѓС„РµСЂ С‡С‚РµРЅРёСЏ
+    Byte TxFrame[SPI_FRAME_BUF_SIZE]; // Р‘СѓС„РµСЂ Р·Р°РїРёСЃРё
 
-typedef struct _TPpData {
-  
-  Uns X_VibrData;   // данные виброскорости с датчика
-  Uns Y_VibrData;   // данные виброскорости с датчика
-  Uns Z_VibrData;   // данные виброскорости с датчика
-  Uns Temp_P2;  // Температура подшипника 2
-  Uns Temp_T;   // Температура уплотнителя
-  Uns Temp_ED1; // Температура электродвигателя
-  Uns Temp_P1;  // Температура подшипника 1
-  
-  GPIO_StateUnion Discr_State_In;  // Сигналы из АСУ на дискретных входах
-  GPIO_AsuStateUnion Discr_ASU_In; // Остальные состояния дискретных входов (выходов)
-  GPIO_StateUnion Discr_State_Out;  // Сигналы из АСУ на дискретных входах
-  GPIO_AsuStateUnion Discr_ASU_Out; // Остальные состояния дискретных входов (выходов)
-  
-  AdcChannelStateStructure AdcState; // Состояние каналов АЦП
-  Byte DvibrErr; // Ошибка датчика вибрации (ошибки ModBus)
-  
-  Byte *Data;                           // Указатель на элемент буфера
-  Uns RxLength;       // Длина принятого кадра
-  Uns TxLength;       // Длина передаваемого кадра
-  Byte RxFrame[SPI_FRAME_BUF_SIZE];		// Буфер
-  Byte TxFrame[SPI_FRAME_BUF_SIZE];		// Буфер
-  
 } TPpData, *TPpHandle;
-
-
 
 void SerialCommInit(TMbHandle);
 void ModbusReset(TMbHandle);
